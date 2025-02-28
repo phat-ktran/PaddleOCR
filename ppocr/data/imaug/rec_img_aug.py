@@ -683,7 +683,7 @@ def resize_norm_img_old_chinese(img, image_shape):
     imgC, imgH, imgW = image_shape
     # todo: change to 0 and modified image shape
     max_hw_ratio = imgH * 1.0 / imgW
-    h, w = img.shape[0], img.shape[1]
+    h, w = img.shape[1], img.shape[0]
     ratio = h * 1.0 / w
     max_hw_ratio = max(max_hw_ratio, ratio)
     imgH = int(imgW * max_hw_ratio)
