@@ -697,7 +697,7 @@ def resize_norm_img_old_chinese(img, image_shape):
         resized_image = resized_image / 255
         resized_image = resized_image[np.newaxis, :]
     else:
-        resized_image = resized_image.transpose((2, 0, 1)) / 255
+        resized_image = resized_image.transpose((2, 1, 0)) / 255
     resized_image -= 0.5
     resized_image /= 0.5
     padding_im = np.zeros((imgC, imgH, imgW), dtype=np.float32)
