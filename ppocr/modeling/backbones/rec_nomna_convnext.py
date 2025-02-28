@@ -176,7 +176,7 @@ class ConvNeXt(nn.Layer):
         self.stage5.extend([_make_bottleneck(out_channels, self.bottleneck_config, self.act) for _ in range(stages[3]-1)])
 
     def forward(self, X: paddle.Tensor) -> paddle.Tensor:
-        S = self.stem(X)
+        S = self.stem(X.transpose([0,2,3,1]))
         for layer in self.stage2:
             S = layer(S)
         for layer in self.stage3:

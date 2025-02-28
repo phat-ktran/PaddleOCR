@@ -858,6 +858,7 @@ def preprocess(is_train=False):
         "Gestalt",
         "SLANet",
         "RobustScanner",
+        "NomNa",
         "CT",
         "RFL",
         "DRRG",
