@@ -19,6 +19,7 @@ import random
 import copy
 from PIL import Image
 import PIL
+import paddle
 from .text_image_aug import tia_perspective, tia_stretch, tia_distort
 from .abinet_aug import (
     CVGeometry,
@@ -577,6 +578,16 @@ class RobustScannerRecResizeImg(object):
         data["word_positons"] = word_positons
         return data
 
+class NomNaRecResizeImg(object):
+    def __init__(self, image_shape, **kwargs):
+        self.image_shape = image_shape
+
+    def __call__(self, data):
+        img = data["image"]
+        norm_img, valid_ratio = resize_norm_img_old_chinese(img, self.image_shape)
+        data["image"] = norm_img
+        data["valid_ratio"] = valid_ratio
+        return data
 
 def resize_norm_img_sar(img, image_shape, width_downsample_ratio=0.25):
     imgC, imgH, imgW_min, imgW_max = image_shape
@@ -665,6 +676,33 @@ def resize_norm_img_chinese(img, image_shape):
     padding_im = np.zeros((imgC, imgH, imgW), dtype=np.float32)
     padding_im[:, :, 0:resized_w] = resized_image
     valid_ratio = min(1.0, float(resized_w / imgW))
+    return padding_im, valid_ratio
+    
+
+def resize_norm_img_old_chinese(img, image_shape):
+    imgC, imgH, imgW = image_shape
+    # todo: change to 0 and modified image shape
+    max_hw_ratio = imgH * 1.0 / imgW
+    h, w = img.shape[0], img.shape[1]
+    ratio = h * 1.0 / w
+    max_hw_ratio = max(max_hw_ratio, ratio)
+    imgH = int(imgW * max_hw_ratio)
+    if math.ceil(imgW * ratio) > imgH:
+        resized_h = imgH
+    else:
+        resized_h = int(math.ceil(imgW * ratio))
+    resized_image = cv2.resize(img, (resized_h, imgW))
+    resized_image = resized_image.astype("float32")
+    if image_shape[0] == 1:
+        resized_image = resized_image / 255
+        resized_image = resized_image[np.newaxis, :]
+    else:
+        resized_image = resized_image.transpose((2, 0, 1)) / 255
+    resized_image -= 0.5
+    resized_image /= 0.5
+    padding_im = np.zeros((imgC, imgH, imgW), dtype=np.float32)
+    padding_im[:, 0:resized_h, :] = resized_image
+    valid_ratio = min(1.0, float(resized_h / imgH))
     return padding_im, valid_ratio
 
 

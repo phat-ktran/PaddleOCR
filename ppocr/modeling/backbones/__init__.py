@@ -50,6 +50,7 @@ def build_backbone(config, model_type):
         from .rec_resnet_vd import ResNet
         from .rec_resnet_fpn import ResNetFPN
         from .rec_mv1_enhance import MobileNetV1Enhance
+        from .rec_nomna_convnext import ConvNeXt
         from .rec_nrtr_mtb import MTB
         from .rec_resnet_31 import ResNet31
         from .rec_resnet_32 import ResNet32
@@ -75,6 +76,7 @@ def build_backbone(config, model_type):
 
         support_dict = [
             "MobileNetV1Enhance",
+            "ConvNeXt",
             "MobileNetV3",
             "ResNet",
             "ResNetFPN",

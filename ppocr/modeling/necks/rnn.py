@@ -237,6 +237,21 @@ class EncoderWithSVTR(nn.Layer):
         z = self.conv1x1(self.conv4(z))
         return z
 
+class EncoderWithNomNa(nn.Layer):
+    def __init__(self, in_channels, dim_feedforward, nhead, nlayers, act) -> None:
+        super().__init__()
+        self.out_channels = in_channels
+        self.encoder = nn.TransformerEncoder(
+            encoder_layer= nn.TransformerEncoderLayer(
+                d_model=in_channels,
+                nhead=nhead,
+                dim_feedforward=dim_feedforward,
+                activation=act,
+            ),
+            num_layers=nlayers
+        )
+    def forward(self, X: paddle.Tensor) -> paddle.Tensor:
+        return self.encoder(X)
 
 class SequenceEncoder(nn.Layer):
     def __init__(self, in_channels, encoder_type, hidden_size=48, **kwargs):
@@ -253,6 +268,7 @@ class SequenceEncoder(nn.Layer):
                 "rnn": EncoderWithRNN,
                 "svtr": EncoderWithSVTR,
                 "cascadernn": EncoderWithCascadeRNN,
+                "nomna": EncoderWithNomNa
             }
             assert encoder_type in support_encoder_dict, "{} must in {}".format(
                 encoder_type, support_encoder_dict.keys()

@@ -36,6 +36,7 @@ from .rec_img_aug import (
     ABINetRecResizeImg,
     SVTRRecResizeImg,
     ABINetRecAug,
+    NomNaRecResizeImg,
     VLRecResizeImg,
     SPINRecResizeImg,
     RobustScannerRecResizeImg,
