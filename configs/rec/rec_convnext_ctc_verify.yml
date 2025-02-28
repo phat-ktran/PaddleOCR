@@ -74,4 +74,23 @@ Train:
     batch_size_per_card: 256
     drop_last: True
     num_workers: 8
+    
 Eval:
+  dataset:
+    name: SimpleDataSet
+    data_dir: ./train_data/rec/train/
+    label_file_list: ["./train_data/rec/rec_gt_train.txt"]
+    transforms:
+      - DecodeImage: # load image
+          img_mode: BGR
+          channel_first: False
+      - CTCLabelEncode: # Class handling label
+      - NomNaRecResizeImg:
+          image_shape: [3, 432, 32]
+      - KeepKeys:
+          keep_keys: ['image', 'label', 'length'] # dataloader will return list in this order
+  loader:
+    shuffle: True
+    batch_size_per_card: 256
+    drop_last: True
+    num_workers: 8
