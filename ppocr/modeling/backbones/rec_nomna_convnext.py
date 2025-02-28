@@ -129,7 +129,7 @@ def _make_bottleneck(in_channels, bottleneck_config, act) -> InvertedBottleneckU
 def _make_stem(in_channels, stem_config, act) -> Stem:
     return Stem(
         in_channels,
-        stem_config["out_channels"],
+        stem_config.get("out_channels", 4),
         kernel_size=stem_config.get("kernel_size", 4),
         stride=stem_config.get("stride", 4),
         padding=stem_config.get("padding", 0),
@@ -150,18 +150,18 @@ class ConvNeXt(nn.Layer):
         assert act in ["gelu", "relu"], "Only support ReLU and GELU."
         self.in_channels = in_channels
         self.act = act
-        self.stem_config ={
+        self.stem_config = {
             "out_channels": 64,
             "kernel_size": (2,4),
             "stride": (2,4),
             "padding": 0
-        },
+        }
         self.bottleneck_config={
             "kernel_size": 7,
             "alpha": 4,
             "stride": 1,
             "padding": 3
-        },
+        }
         self.transition_config={
             "kernel_size": 3,
             "stride": 2,
