@@ -73,7 +73,7 @@ Train:
   dataset:
     name: SimpleDataSet
     data_dir: ./train_data/rec/train/
-    label_file_list: ["./train_data/rec/train/rec_gt_train.txt"]
+    label_file_list: ["./train_data/rec/rec_gt_train.txt"]
     transforms:
       - DecodeImage: # load image
           img_mode: BGR
