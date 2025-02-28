@@ -195,7 +195,7 @@ class ConvNeXt(nn.Layer):
             S = layer(S)
         for layer in self.stage5:
             S = layer(S)
-        return S.transpose([0, 3, 2, 1]) # N, C, 1, S
+        return S
 
 if __name__ == '__main__':
     model = ConvNeXt(
