@@ -25,9 +25,9 @@ Optimizer:
   beta1: 0.9
   beta2: 0.999
   lr:
-    learning_rate: 0.0005
+    learning_rate: 0.005
     name: LinearWarmupCosine
-    warmup_steps: 1000
+    warmup_steps: 100
   regularizer:
     name: 'L2'
     factor: 0.05
