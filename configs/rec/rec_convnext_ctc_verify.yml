@@ -44,6 +44,7 @@ Architecture:
   Head:
     name: CTCHead
     fc_decay: 0
+    in_channels: 512
 
 Loss:
   name: CTCLoss
