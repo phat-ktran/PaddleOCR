@@ -15,7 +15,7 @@ Global:
   infer_img: 
   # for data or label process
   character_dict_path: ppocr/utils/dict/nomna_dict.txt
-  max_text_length: 27 # CTC does not require max_text_length
+  max_text_length: 27
   infer_mode: False
   use_space_char: False
   save_res_path: 
@@ -25,9 +25,10 @@ Optimizer:
   beta1: 0.9
   beta2: 0.999
   lr:
-    learning_rate: 0.005
-    name: LinearWarmupCosine
-    warmup_steps: 100
+    learning_rate: 0.01
+    end_lr: 0.004
+    name: DecayLearningRate
+    step_each_epoch: 100
   regularizer:
     name: 'L2'
     factor: 0.05
