@@ -1,10 +1,10 @@
 Global:
   use_gpu: true
-  epoch_num: 72
+  epoch_num: 500
   log_smooth_window: 20
   print_batch_step: 10
   save_model_dir: ./output/rec/convnext_ctc/
-  save_epoch_step: 3
+  save_epoch_step: 50
   # evaluation is run every 2000 iterations
   eval_batch_step: [0, 2000]
   cal_metric_during_train: True
