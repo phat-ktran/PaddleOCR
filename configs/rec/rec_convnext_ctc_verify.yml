@@ -39,7 +39,7 @@ Architecture:
   Backbone:
     name: ConvNeXt
     in_channels: 3
-    stages: [3,3,6,3]
+    stages: [1,1,2,1]
   Neck:
   Head:
     name: CTCHead
