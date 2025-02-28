@@ -76,6 +76,7 @@ class CTCHead(nn.Layer):
 
     def forward(self, x, targets=None):
         if self.mid_channels is None:
+            print(x.shape)
             predicts = self.fc(x)
         else:
             x = self.fc1(x)
