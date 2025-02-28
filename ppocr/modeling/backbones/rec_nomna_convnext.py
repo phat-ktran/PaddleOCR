@@ -195,7 +195,7 @@ class ConvNeXt(nn.Layer):
             S = layer(S)
         for layer in self.stage5:
             S = layer(S)
-        return S
+        return S.squeeze(2)
 
 if __name__ == '__main__':
     model = ConvNeXt(
