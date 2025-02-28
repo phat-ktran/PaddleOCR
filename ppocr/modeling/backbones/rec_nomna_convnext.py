@@ -169,21 +169,21 @@ class ConvNeXt(nn.Layer):
         }
         # Stage 1
         self.stem = _make_stem(self.in_channels, self.stem_config, self.act)
-        out_channels = self.stem.out_channels
+        self.out_channels = self.stem.out_channels
         # Stage 2
         self.stage2 = nn.LayerList([_make_bottleneck(self.stem.out_channels, self.bottleneck_config, self.act) for _ in range(stages[0])])
         # Stage 3
-        self.stage3 = nn.LayerList([_make_transition(out_channels, self.transition_config, self.act)])
-        out_channels *= self.EXPANSION
-        self.stage3.extend([_make_bottleneck(out_channels, self.bottleneck_config, self.act) for _ in range(stages[1]-1)])
+        self.stage3 = nn.LayerList([_make_transition(self.out_channels, self.transition_config, self.act)])
+        self.out_channels *= self.EXPANSION
+        self.stage3.extend([_make_bottleneck(self.out_channels, self.bottleneck_config, self.act) for _ in range(stages[1]-1)])
         # Stage 4
-        self.stage4 = nn.LayerList([_make_transition(out_channels, self.transition_config, self.act)])
-        out_channels *= self.EXPANSION
-        self.stage4.extend([_make_bottleneck(out_channels, self.bottleneck_config, self.act) for _ in range(stages[2]-1)])
+        self.stage4 = nn.LayerList([_make_transition(self.out_channels, self.transition_config, self.act)])
+        self.out_channels *= self.EXPANSION
+        self.stage4.extend([_make_bottleneck(self.out_channels, self.bottleneck_config, self.act) for _ in range(stages[2]-1)])
         # Stage 5
-        self.stage5 = nn.LayerList([_make_transition(out_channels, self.transition_config, self.act)])
-        out_channels *= self.EXPANSION
-        self.stage5.extend([_make_bottleneck(out_channels, self.bottleneck_config, self.act) for _ in range(stages[3]-1)])
+        self.stage5 = nn.LayerList([_make_transition(self.out_channels, self.transition_config, self.act)])
+        self.out_channels *= self.EXPANSION
+        self.stage5.extend([_make_bottleneck(self.out_channels, self.bottleneck_config, self.act) for _ in range(stages[3]-1)])
 
     def forward(self, X: paddle.Tensor) -> paddle.Tensor:
         S = self.stem(X.transpose([0,2,3,1]))
