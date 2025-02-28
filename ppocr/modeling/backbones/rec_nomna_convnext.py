@@ -143,9 +143,6 @@ class ConvNeXt(nn.Layer):
         self,
         in_channels,
         stages,
-        stem,
-        bottleneck,
-        transition,
         act = "gelu"
     ):
         super().__init__()
@@ -153,10 +150,23 @@ class ConvNeXt(nn.Layer):
         assert act in ["gelu", "relu"], "Only support ReLU and GELU."
         self.in_channels = in_channels
         self.act = act
-        self.stem_config = stem
-        self.transition_config = transition
-        self.bottleneck_config = bottleneck
-        self.stem_config = stem
+        self.stem_config ={
+            "out_channels": 64,
+            "kernel_size": (2,4),
+            "stride": (2,4),
+            "padding": 0
+        },
+        self.bottleneck_config={
+            "kernel_size": 7,
+            "alpha": 4,
+            "stride": 1,
+            "padding": 3
+        },
+        self.transition_config={
+            "kernel_size": 3,
+            "stride": 2,
+            "padding": 1
+        }
         # Stage 1
         self.stem = _make_stem(self.in_channels, self.stem_config, self.act)
         out_channels = self.stem.out_channels
@@ -191,22 +201,5 @@ if __name__ == '__main__':
     model = ConvNeXt(
         in_channels=3,
         stages=[3,3,6,3],
-        stem={
-            "out_channels": 64,
-            "kernel_size": (2,4),
-            "stride": (2,4),
-            "padding": 0
-        },
-        bottleneck={
-            "kernel_size": 7,
-            "alpha": 4,
-            "stride": 1,
-            "padding": 3
-        },
-        transition={
-            "kernel_size": 3,
-            "stride": 2,
-            "padding": 1
-        }
     )
     paddle.summary(model, input_size=(3, 432, 32, 3))

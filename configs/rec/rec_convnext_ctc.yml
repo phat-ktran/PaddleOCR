@@ -40,20 +40,6 @@ Architecture:
     name: ConvNeXt
     in_channels: 3
     stages: [3,3,6,3]
-    stem:
-      out_channels: 64
-      kernel_size: [2,4]
-      stride: [2,4]
-      padding: 0
-    bottleneck:
-      kernel_size: 7
-      alpha: 4
-      stride: 1
-      padding: 3
-    transition:
-      kernel_size: 3
-      stride: 2
-      padding: 1
   Neck:
   Head:
     name: CTCHead
