@@ -71,7 +71,7 @@ Metric:
 
 Train:
   dataset:
-    name: SimpleDataset
+    name: SimpleDataSet
     data_dir: ./train_data/rec/train/
     transforms:
       - DecodeImage: # load image
