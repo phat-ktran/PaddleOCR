@@ -151,8 +151,8 @@ class MobileNetV3(nn.Layer):
         self.conv3 = ConvBNLayer(
             in_channels=make_divisible(scale * cls_ch_squeeze),
             out_channels=make_divisible(scale * cls_ch_squeeze),
-            kernel_size=2,
-            stride=2,
+            kernel_size=(1,2),
+            stride=1,
             padding=0,
             groups=1,
             if_act=True,
@@ -162,8 +162,8 @@ class MobileNetV3(nn.Layer):
         self.conv4 = ConvBNLayer(
             in_channels=make_divisible(scale * cls_ch_squeeze),
             out_channels=make_divisible(scale * cls_ch_squeeze),
-            kernel_size=2,
-            stride=2,
+            kernel_size=(1,2),
+            stride=1,
             padding=0,
             groups=1,
             if_act=True,
@@ -177,7 +177,6 @@ class MobileNetV3(nn.Layer):
         x = self.blocks(x)
         x = self.conv2(x)
         x = self.pool(x)
-        print(x.shape)
         x = self.conv3(x)
         x = self.conv4(x)
         return x
