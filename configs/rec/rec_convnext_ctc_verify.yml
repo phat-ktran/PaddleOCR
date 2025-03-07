@@ -8,7 +8,7 @@ Global:
   # evaluation is run every 2000 iterations
   eval_batch_step: [0, 2000]
   cal_metric_during_train: True
-  pretrained_model:
+  pretrained_model: 
   checkpoints:
   save_inference_dir:
   use_visualdl: False
@@ -25,10 +25,9 @@ Optimizer:
   beta1: 0.9
   beta2: 0.999
   lr:
-    learning_rate: 0.01
-    end_lr: 0.004
-    name: DecayLearningRate
-    step_each_epoch: 100
+    learning_rate: 0.005
+    name: LinearWarmupCosine
+    warmup_steps: 100
   regularizer:
     name: 'L2'
     factor: 0.05

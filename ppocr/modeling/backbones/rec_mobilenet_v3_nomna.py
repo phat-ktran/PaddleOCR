@@ -60,7 +60,7 @@ class MobileNetV3(nn.Layer):
                 [3, 16, 16, False, "relu", large_stride[0]],
                 [3, 64, 24, False, "relu", (large_stride[1], 1)],
                 [3, 72, 24, False, "relu", 1],
-                [5, 72, 40, True, "relu", (large_stride[2], 2)],
+                [5, 72, 40, True, "relu", (large_stride[2], 1)],
                 [5, 120, 40, True, "relu", 1],
                 [5, 120, 40, True, "relu", 1],
                 [3, 240, 80, False, "hardswish", 1],
@@ -69,7 +69,7 @@ class MobileNetV3(nn.Layer):
                 [3, 184, 80, False, "hardswish", 1],
                 [3, 480, 112, True, "hardswish", 1],
                 [3, 672, 112, True, "hardswish", 1],
-                [5, 672, 160, True, "hardswish", (large_stride[3], 2)],
+                [5, 672, 160, True, "hardswish", (large_stride[3], 1)],
                 [5, 960, 160, True, "hardswish", 1],
                 [5, 960, 160, True, "hardswish", 1],
             ]
@@ -80,12 +80,12 @@ class MobileNetV3(nn.Layer):
                 [3, 16, 16, True, "relu", (small_stride[0], 1)],
                 [3, 72, 24, False, "relu", (small_stride[1], 1)],
                 [3, 88, 24, False, "relu", 1],
-                [5, 96, 40, True, "hardswish", (small_stride[2], 2)],
+                [5, 96, 40, True, "hardswish", (small_stride[2], 1)],
                 [5, 240, 40, True, "hardswish", 1],
                 [5, 240, 40, True, "hardswish", 1],
                 [5, 120, 48, True, "hardswish", 1],
                 [5, 144, 48, True, "hardswish", 1],
-                [5, 288, 96, True, "hardswish", (small_stride[3], 2)],
+                [5, 288, 96, True, "hardswish", (small_stride[3], 1)],
                 [5, 576, 96, True, "hardswish", 1],
                 [5, 576, 96, True, "hardswish", 1],
             ]
@@ -146,29 +146,6 @@ class MobileNetV3(nn.Layer):
         )
 
         self.pool = nn.MaxPool2D(kernel_size=2, stride=2, padding=0)
-
-        self.conv3 = ConvBNLayer(
-            in_channels=make_divisible(scale * cls_ch_squeeze),
-            out_channels=make_divisible(scale * cls_ch_squeeze),
-            kernel_size=2,
-            stride=2,
-            padding=0,
-            groups=1,
-            if_act=True,
-            act="hardswish",
-        )
-
-        self.conv4 = ConvBNLayer(
-            in_channels=make_divisible(scale * cls_ch_squeeze),
-            out_channels=make_divisible(scale * cls_ch_squeeze),
-            kernel_size=2,
-            stride=2,
-            padding=0,
-            groups=1,
-            if_act=True,
-            act="hardswish",
-        )
-
         self.out_channels = make_divisible(scale * cls_ch_squeeze)
 
     def forward(self, x):
@@ -176,6 +153,4 @@ class MobileNetV3(nn.Layer):
         x = self.blocks(x)
         x = self.conv2(x)
         x = self.pool(x)
-        x = self.conv3(x)
-        x = self.conv4(x)
         return x

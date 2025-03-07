@@ -142,7 +142,6 @@ class ConvNeXt(nn.Layer):
     def __init__(
         self,
         in_channels,
-        stages,
         act = "gelu"
     ):
         super().__init__()
