@@ -36,12 +36,12 @@ Architecture:
     Transform:
     Backbone:
         name: MobileNetV3
-        scale: 0.5
-        model_name: large
+        scale: 1.0
+        model_name: small
     Neck:
         name: SequenceEncoder
         encoder_type: rnn
-        hidden_size: 96
+        hidden_size: 256
     Head:
         name: CTCHead
         fc_decay: 0.0004

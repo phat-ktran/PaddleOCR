@@ -78,7 +78,7 @@ class MobileNetV3(nn.Layer):
         elif model_name == "small":
             cfg = [
                 # k, exp, c,  se,     nl,  s,
-                [3, 16, 16, True, "relu", (small_stride[0], 1)],
+                [3, 16, 16, True, "relu", 1],
                 [3, 72, 24, False, "relu", (small_stride[1], 1)],
                 [3, 88, 24, False, "relu", 1],
                 [5, 96, 40, True, "hardswish", (small_stride[2], 2)],
