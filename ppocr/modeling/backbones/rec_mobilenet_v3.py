@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from paddle import nn
+import paddle
 
 from ppocr.modeling.backbones.det_mobilenet_v3 import (
     ResidualUnit,
@@ -176,6 +177,7 @@ class MobileNetV3(nn.Layer):
         x = self.blocks(x)
         x = self.conv2(x)
         x = self.pool(x)
+        print(x.shape)
         x = self.conv3(x)
         x = self.conv4(x)
         return x
