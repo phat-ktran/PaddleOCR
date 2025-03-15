@@ -115,6 +115,7 @@ class ConvBNLayer(nn.Layer):
         dcn_groups=1,
         is_vd_mode=False,
         act=None,
+        padding=None,
         is_dcn=False,
     ):
         super(ConvBNLayer, self).__init__()
@@ -129,7 +130,7 @@ class ConvBNLayer(nn.Layer):
                 out_channels=out_channels,
                 kernel_size=kernel_size,
                 stride=stride,
-                padding=(kernel_size - 1) // 2,
+                padding=padding or (kernel_size - 1) // 2,
                 groups=groups,
                 bias_attr=False,
             )
@@ -139,7 +140,7 @@ class ConvBNLayer(nn.Layer):
                 out_channels=out_channels,
                 kernel_size=kernel_size,
                 stride=stride,
-                padding=(kernel_size - 1) // 2,
+                padding=padding or (kernel_size - 1) // 2,
                 groups=dcn_groups,  # groups,
                 bias_attr=False,
             )

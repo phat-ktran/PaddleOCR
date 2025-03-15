@@ -43,15 +43,24 @@ class Im2Seq(nn.Layer):
 
 
 class EncoderWithRNN(nn.Layer):
-    def __init__(self, in_channels, hidden_size):
+    def __init__(self, in_channels, hidden_size, cell_type="lstm", method="concat"):
         super(EncoderWithRNN, self).__init__()
-        self.out_channels = hidden_size * 2
-        self.lstm = nn.LSTM(
-            in_channels, hidden_size, direction="bidirectional", num_layers=2
-        )
+        assert method in ["concat", "add"], "Only supports Concatenate or Add for method."
+        self.method = method
+        self.out_channels = hidden_size * 2 if self.method == "concat" else hidden_size
+        if cell_type == "lstm":
+            self.cell = nn.LSTM(
+                in_channels, hidden_size, direction="bidirectional", num_layers=2
+            )
+        else:
+            self.cell = nn.GRU(
+                in_channels, hidden_size, direction="bidirectional", num_layers=2
+            )
 
     def forward(self, x):
-        x, _ = self.lstm(x)
+        x, _ = self.cell(x) # batch_size x T x (2 * hidden_size)
+        if self.method == "add":
+            x = x[:, :, :self.out_channels] + x[:, :, self.out_channels:]
         return x
 
 
@@ -277,7 +286,7 @@ class SequenceEncoder(nn.Layer):
                 self.encoder = support_encoder_dict[encoder_type](
                     self.encoder_reshape.out_channels, **kwargs
                 )
-            elif encoder_type == "cascadernn":
+            elif encoder_type == "cascadernn" or encoder_type == "rnn":
                 self.encoder = support_encoder_dict[encoder_type](
                     self.encoder_reshape.out_channels, hidden_size, **kwargs
                 )
