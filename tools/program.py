@@ -858,7 +858,10 @@ def preprocess(is_train=False):
         "Gestalt",
         "SLANet",
         "RobustScanner",
-        "NomNa",
+        # PP-Thesis
+        "NomNaCTC",
+        "NomNaTransformer",
+        #=============
         "CT",
         "RFL",
         "DRRG",

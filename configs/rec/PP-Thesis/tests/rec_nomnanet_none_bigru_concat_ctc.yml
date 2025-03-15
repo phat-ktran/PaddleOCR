@@ -30,7 +30,7 @@ Optimizer:
 
 Architecture:
   model_type: rec
-  algorithm: CRNN
+  algorithm: NomNaCTC
   Transform:
   Backbone:
     name: NomNaNet

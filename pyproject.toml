@@ -49,7 +49,7 @@ dependencies = [
     "opencv-python",
     "opencv-contrib-python",
     "cython",
-    "Pillow",
+    "pillow",
     "pyyaml",
     "python-docx",
     "beautifulsoup4",
@@ -61,7 +61,7 @@ dependencies = [
     "albucore",
     "ruff>=0.11.0",
     "setuptools>=75.3.2",
-    "paddlepaddle-gpu>=2.6.2",
+    "packaging>=24.2",
 ]
 
 [project.urls]
