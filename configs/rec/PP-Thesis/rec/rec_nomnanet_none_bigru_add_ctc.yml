@@ -52,7 +52,7 @@ PostProcess:
 
 Metric:
   name: RecMetric
-  main_indicator: acc
+  main_indicator: "char_acc"
 
 Train:
   dataset:
@@ -70,7 +70,7 @@ Train:
           keep_keys: ['image', 'label', 'length'] # dataloader will return list in this order
   loader:
     shuffle: False
-    batch_size_per_card: 16
+    batch_size_per_card: 256
     drop_last: True
     num_workers: 8
 
@@ -91,5 +91,5 @@ Eval:
   loader:
     shuffle: False
     drop_last: False
-    batch_size_per_card: 16
+    batch_size_per_card: 256
     num_workers: 4

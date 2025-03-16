@@ -43,6 +43,7 @@ from .rec_rfl_loss import RFLLoss
 from .rec_can_loss import CANLoss
 from .rec_satrn_loss import SATRNLoss
 from .rec_nrtr_loss import NRTRLoss
+from .rec_nomna_loss import NomNaTransformerLoss
 from .rec_parseq_loss import ParseQLoss
 from .rec_cppd_loss import CPPDLoss
 from .rec_latexocr_loss import LaTeXOCRLoss
@@ -108,6 +109,7 @@ def build_loss(config):
         "TelescopeLoss",
         "SATRNLoss",
         "NRTRLoss",
+        "NomNaTransformerLoss",
         "ParseQLoss",
         "CPPDLoss",
         "LaTeXOCRLoss",

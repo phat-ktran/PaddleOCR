@@ -860,7 +860,7 @@ def preprocess(is_train=False):
         "RobustScanner",
         # PP-Thesis
         "NomNaCTC",
-        "NomNaTransformer",
+        "NomNaDecoder",
         #=============
         "CT",
         "RFL",

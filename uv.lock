@@ -927,7 +927,7 @@ wheels = [
 
 [[package]]
 name = "paddleocr"
-version = "0.1.0.dev6448+gfe0df2a.d20250315"
+version = "0.1.0.dev6449+g5a60cb0.d20250316"
 source = { editable = "." }
 dependencies = [
     { name = "albucore", version = "0.0.17", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.9'" },
