@@ -34,6 +34,7 @@ Architecture:
   Transform:
   Backbone:
     name: NomNaNet
+    channel_last: True
   Neck:
   Head:
     name: NomNaTransformer
@@ -43,7 +44,7 @@ Architecture:
     num_decoder_layers: 2
     dim_feedforward: 512
     attention_dropout_rate: 0.1
-    method: "add"
+    enable_skip_conn: true
 
 Loss:
   name: NomNaTransformerLoss

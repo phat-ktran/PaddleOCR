@@ -54,11 +54,10 @@ class NomNaTransformer(nn.Layer):
         in_channels=0,
         out_channels=0,
         scale_embedding=True,
-        method="none",
+        enable_skip_conn = False,
     ):
         super(NomNaTransformer, self).__init__()
-        assert method in ["none", "Add"], "Only supports 2 methods."
-        self.method = method
+        self.enable_skip_conn = enable_skip_conn
         self.out_channels = out_channels + 1
         self.max_len = max_len
         self.embedding = Embeddings(
@@ -132,7 +131,7 @@ class NomNaTransformer(nn.Layer):
             for encoder_layer in self.encoder:
                 e_src = encoder_layer(e_src)
             memory = e_src
-            if self.method == "add":
+            if self.enable_skip_conn:
                 memory += src  # B N C
         else:
             memory = src  # B N C
@@ -171,7 +170,7 @@ class NomNaTransformer(nn.Layer):
             for encoder_layer in self.encoder:
                 e_src = encoder_layer(e_src)
             memory = e_src  # B N C
-            if self.method == "add":
+            if self.enable_skip_conn == "add":
                 memory += src 
         else:
             memory = src

@@ -34,6 +34,7 @@ Architecture:
   Transform:
   Backbone:
     name: NomNaNet
+    channel_last: True
   Neck:
   Head:
     name: NomNaTransformer
