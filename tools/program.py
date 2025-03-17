@@ -251,6 +251,7 @@ def train(
     extra_input_models = [
         "SRN",
         "NRTR",
+        "NomNaDecoder",
         "SAR",
         "SEED",
         "SVTR",
@@ -264,7 +265,6 @@ def train(
         "SVTR_HGNet",
         "ParseQ",
         "CPPD",
-        "NomNa"
     ]
     extra_input = False
     if config["Architecture"]["algorithm"] == "Distillation":
