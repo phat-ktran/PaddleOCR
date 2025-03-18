@@ -1,14 +1,14 @@
 Global:
   use_gpu: True
-  epoch_num: 100
+  epoch_num: 25
   log_smooth_window: 20
   print_batch_step: 10
-  save_model_dir: ./output/rec/nomnanet_none_add_transformer/
+  save_model_dir: ./output/rec/nomnanet_none_bigru_ctc_finetune/
   save_epoch_step: 5
-  eval_batch_step: [1000, 250] # Evaluation is run every 200 iterations after 500 iterations
+  eval_batch_step: [500, 200] # Evaluation is run every 200 iterations after 500 iterations
   cal_metric_during_train: True
-  pretrained_model:
-  checkpoints:
+  pretrained_model: ./output/rec/nomnanet_none_bigru_ctc/best_accuracy
+  checkpoints: null
   save_inference_dir:
   use_visualdl: False
   infer_img:
@@ -17,7 +17,7 @@ Global:
   max_text_length: 25
   infer_mode: False
   use_space_char: False
-  save_res_path: ./output/rec/predicts_nomnanet_none_add_transformer.txt
+  save_res_path: ./output/rec/predicts_nomnanet_none_bigru_ctc_finetune.txt
 
 Optimizer:
   name: Adadelta
@@ -25,32 +25,28 @@ Optimizer:
     learning_rate: 1.0
   regularizer:
     name: 'L2'
-    factor: 0
+    factor: 0.00001
 
 Architecture:
   model_type: rec
-  algorithm: NomNaDecoder
+  algorithm: NomNaCTC
   Transform:
   Backbone:
     name: NomNaNet
-    channel_last: True
   Neck:
+    name: SequenceEncoder
+    encoder_type: rnn
+    hidden_size: 256
+    cell_type: "gru"
   Head:
-    name: NomNaTransformer
-    d_model: 512
-    nhead: 1
-    num_encoder_layers: 2
-    num_decoder_layers: 2
-    dim_feedforward: 512
-    attention_dropout_rate: 0.1
-    enable_skip_conn: true
+    name: CTCHead
+    fc_decay: 0.0004
 
 Loss:
-  name: NomNaTransformerLoss
-  smoothing: false
+  name: CTCLoss
 
 PostProcess:
-  name: NomNaTransformerLabelDecode
+  name: CTCLabelDecode
 
 Metric:
   name: RecMetric
@@ -65,7 +61,7 @@ Train:
       - DecodeImage: # load image
           img_mode: BGR
           channel_first: False
-      - NomNaTransformerLabelEncode: # Class handling label
+      - CTCLabelEncode: # Class handling label
       - RecResizeImg:
           image_shape: [3, 48, 432]
       - KeepKeys:
@@ -85,7 +81,7 @@ Eval:
       - DecodeImage: # load image
           img_mode: BGR
           channel_first: False
-      - NomNaTransformerLabelEncode: # Class handling label
+      - CTCLabelEncode: # Class handling label
       - RecResizeImg:
           image_shape: [3, 48, 432]
       - KeepKeys:

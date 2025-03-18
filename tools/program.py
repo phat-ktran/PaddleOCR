@@ -861,6 +861,7 @@ def preprocess(is_train=False):
         # PP-Thesis
         "NomNaCTC",
         "NomNaDecoder",
+        "NomNaAttention",
         #=============
         "CT",
         "RFL",
