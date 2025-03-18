@@ -5,8 +5,7 @@ Global:
   print_batch_step: 10
   save_model_dir: ./output/rec/nomnanet_none_transformer/
   save_epoch_step: 5
-  # evaluation is run every 2000 iterations
-  eval_batch_step: [0, 200]
+  eval_batch_step: [500, 200] # Evaluation is run every 200 iterations after 500 iterations
   cal_metric_during_train: True
   pretrained_model:
   checkpoints:
