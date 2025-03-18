@@ -7,7 +7,7 @@ __all__ = ["NomNaNet"]
 
 
 class NomNaNet(nn.Layer):
-    def __init__(self, in_channels, channel_last=True, channels=[64, 128, 256, 512]):
+    def __init__(self, in_channels, channel_last=False, channels=[64, 128, 256, 512]):
         super().__init__()
         assert len(channels) == 4, "Only support 4 blocks."
         self.in_channels = in_channels
