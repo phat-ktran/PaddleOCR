@@ -42,6 +42,7 @@ Architecture:
     cell_type: "gru"
   Head:
     name: AttentionHead
+    hidden_size: 256
 
 Loss:
   name: AttentionLoss
