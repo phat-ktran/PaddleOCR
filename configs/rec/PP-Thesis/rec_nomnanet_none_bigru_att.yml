@@ -20,14 +20,16 @@ Global:
   save_res_path: ./output/rec/predicts_nomnanet_none_bigru_att.txt
 
 Optimizer:
-  name: Adam
-  beta1: 0.9
-  beta2: 0.999
+  name: Adadelta
+  weight_deacy: 0.0
+  momentum: 0.9
   lr:
-    learning_rate: 0.0005
+    name: Piecewise
+    decay_epochs: [4, 5]
+    values: [1.0, 0.1, 0.01]
   regularizer:
     name: 'L2'
-    factor: 0.00001
+    factor: 2.0e-05
 
 Architecture:
   model_type: rec
