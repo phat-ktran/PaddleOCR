@@ -1,12 +1,11 @@
 Global:
   use_gpu: True
-  epoch_num: 25
+  epoch_num: 100
   log_smooth_window: 20
   print_batch_step: 10
   save_model_dir: ./output/rec/nomnanet_none_transformer/
   save_epoch_step: 5
-  # evaluation is run every 2000 iterations
-  eval_batch_step: [0, 200]
+  eval_batch_step: [4740, 500] # Evaluation is run every 500 iterations after 4740 iterations
   cal_metric_during_train: True
   pretrained_model:
   checkpoints:

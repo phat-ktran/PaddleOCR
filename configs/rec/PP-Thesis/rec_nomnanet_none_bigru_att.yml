@@ -1,11 +1,11 @@
 Global:
   use_gpu: True
-  epoch_num: 25
+  epoch_num: 100
   log_smooth_window: 20
-  print_batch_step: 10
-  save_model_dir: ./output/rec/nomnanet_none_bigru_ctc/
+  print_batch_step: 100
+  save_model_dir: ./output/rec/nomnanet_none_bigru_att/
   save_epoch_step: 5
-  eval_batch_step: [500, 200] # Evaluation is run every 200 iterations after 500 iterations
+  eval_batch_step: [4740, 500] # Evaluation is run every 500 iterations after 4740 iterations
   cal_metric_during_train: True
   pretrained_model:
   checkpoints:
@@ -17,19 +17,21 @@ Global:
   max_text_length: 25
   infer_mode: False
   use_space_char: False
-  save_res_path: ./output/rec/predicts_nomnanet_none_bigru_ctc.txt
+  save_res_path: ./output/rec/predicts_nomnanet_none_bigru_att.txt
 
 Optimizer:
-  name: Adadelta
+  name: Adam
+  beta1: 0.9
+  beta2: 0.999
   lr:
-    learning_rate: 1.0
+    learning_rate: 0.0005
   regularizer:
     name: 'L2'
     factor: 0.00001
 
 Architecture:
   model_type: rec
-  algorithm: NomNaCTC
+  algorithm: NomNaAttention
   Transform:
   Backbone:
     name: NomNaNet
@@ -39,14 +41,14 @@ Architecture:
     hidden_size: 256
     cell_type: "gru"
   Head:
-    name: CTCHead
-    fc_decay: 0.0004
+    name: AttentionHead
+    hidden_size: 256
 
 Loss:
-  name: CTCLoss
+  name: AttentionLoss
 
 PostProcess:
-  name: CTCLabelDecode
+  name: AttnLabelDecode
 
 Metric:
   name: RecMetric
@@ -61,7 +63,7 @@ Train:
       - DecodeImage: # load image
           img_mode: BGR
           channel_first: False
-      - CTCLabelEncode: # Class handling label
+      - AttnLabelEncode: # Class handling label
       - RecResizeImg:
           image_shape: [3, 48, 432]
       - KeepKeys:

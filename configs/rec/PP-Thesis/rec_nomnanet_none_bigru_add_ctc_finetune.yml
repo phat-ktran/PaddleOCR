@@ -3,12 +3,12 @@ Global:
   epoch_num: 25
   log_smooth_window: 20
   print_batch_step: 10
-  save_model_dir: ./output/rec/nomnanet_none_bigru_ctc/
+  save_model_dir: ./output/rec/nomnanet_none_bigru_ctc_finetune/
   save_epoch_step: 5
   eval_batch_step: [500, 200] # Evaluation is run every 200 iterations after 500 iterations
   cal_metric_during_train: True
-  pretrained_model:
-  checkpoints:
+  pretrained_model: ./output/rec/nomnanet_none_bigru_add_ctc/best_accuracy
+  checkpoints: null
   save_inference_dir:
   use_visualdl: False
   infer_img:
@@ -17,7 +17,7 @@ Global:
   max_text_length: 25
   infer_mode: False
   use_space_char: False
-  save_res_path: ./output/rec/predicts_nomnanet_none_bigru_ctc.txt
+  save_res_path: ./output/rec/predicts_nomnanet_none_bigru_ctc_finetune.txt
 
 Optimizer:
   name: Adadelta
@@ -37,6 +37,7 @@ Architecture:
     name: SequenceEncoder
     encoder_type: rnn
     hidden_size: 256
+    method: "add"
     cell_type: "gru"
   Head:
     name: CTCHead
