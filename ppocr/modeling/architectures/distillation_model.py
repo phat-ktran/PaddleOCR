@@ -34,6 +34,7 @@ class DistillationModel(nn.Layer):
             config (dict): the super parameters for module.
         """
         super().__init__()
+        stop_training = False
         self.model_list = []
         self.model_name_list = []
         for key in config["Models"]:

@@ -32,6 +32,7 @@ class BaseModel(nn.Layer):
             config (dict): the super parameters for module.
         """
         super(BaseModel, self).__init__()
+        stop_training = False
         in_channels = config.get("in_channels", 3)
         model_type = config["model_type"]
         # build transfrom,

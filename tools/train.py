@@ -24,7 +24,6 @@ __dir__ = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(__dir__)
 sys.path.insert(0, os.path.abspath(os.path.join(__dir__, "..")))
 
-import yaml
 import paddle
 import paddle.distributed as dist
 
@@ -34,6 +33,7 @@ from ppocr.losses import build_loss
 from ppocr.optimizer import build_optimizer
 from ppocr.postprocess import build_post_process
 from ppocr.metrics import build_metric
+from ppocr.callbacks import build_callbacks
 from ppocr.utils.save_load import load_model
 from ppocr.utils.utility import set_seed
 from ppocr.modeling.architectures import apply_to_static
@@ -94,7 +94,7 @@ def main(config, device, logger, vdl_writer, seed):
                     ):
                         config["Loss"]["loss_config_list"][-1]["DistillationSARLoss"][
                             "ignore_index"
-                        ] = (char_num + 1)
+                        ] = char_num + 1
                         out_channels_list["SARLabelDecode"] = char_num + 2
                     elif any(
                         "DistillationNRTRLoss" in d
@@ -106,9 +106,9 @@ def main(config, device, logger, vdl_writer, seed):
                         "out_channels_list"
                     ] = out_channels_list
                 else:
-                    config["Architecture"]["Models"][key]["Head"][
-                        "out_channels"
-                    ] = char_num
+                    config["Architecture"]["Models"][key]["Head"]["out_channels"] = (
+                        char_num
+                    )
         elif config["Architecture"]["Head"]["name"] == "MultiHead":  # for multi head
             if config["PostProcess"]["name"] == "SARLabelDecode":
                 char_num = char_num - 2
@@ -161,6 +161,9 @@ def main(config, device, logger, vdl_writer, seed):
 
     # build metric
     eval_class = build_metric(config["Metric"])
+
+    # build callbacks
+    callback_classes = build_callbacks(config["Callbacks"], model)
 
     logger.info("train dataloader has {} iters".format(len(train_dataloader)))
     if valid_dataloader is not None:
@@ -231,6 +234,7 @@ def main(config, device, logger, vdl_writer, seed):
         lr_scheduler,
         post_process_class,
         eval_class,
+        callback_classes,
         pre_best_model_dict,
         logger,
         step_pre_epoch,
