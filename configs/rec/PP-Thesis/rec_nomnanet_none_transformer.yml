@@ -4,8 +4,8 @@ Global:
   log_smooth_window: 20
   print_batch_step: 10
   save_model_dir: ./output/rec/nomnanet_none_transformer/
-  save_epoch_step: 5
-  eval_batch_step: [4740, 500] # Evaluation is run every 500 iterations after 4740 iterations
+  save_epoch_step: 3
+  eval_batch_step: [7614, 846] # Evaluation is run every 500 iterations after 4740 iterations
   cal_metric_during_train: True
   pretrained_model:
   checkpoints:
@@ -71,7 +71,7 @@ Train:
           keep_keys: ['image', 'label', 'length'] # dataloader will return list in this order
   loader:
     shuffle: False
-    batch_size_per_card: 256
+    batch_size_per_card: 16
     drop_last: True
     num_workers: 8
 
@@ -92,5 +92,5 @@ Eval:
   loader:
     shuffle: False
     drop_last: False
-    batch_size_per_card: 256
+    batch_size_per_card: 16
     num_workers: 4
