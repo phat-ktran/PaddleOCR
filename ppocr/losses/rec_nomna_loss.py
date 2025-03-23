@@ -8,7 +8,7 @@ class NomNaTransformerLoss(nn.Layer):
         super(NomNaTransformerLoss, self).__init__()
         if ignore_index >= 0 and not smoothing:
             self.loss_func = nn.CrossEntropyLoss(
-                reduction="mean", ignore_index=ignore_index
+                reduction="none", ignore_index=ignore_index
             )
         self.smoothing = smoothing
 
