@@ -469,7 +469,6 @@ class SVTRNet(nn.Layer):
             shape=[1, num_patches, embed_dim[0]], default_initializer=zeros_
         )
         self.add_parameter("pos_embed", self.pos_embed)
-        self.pos_drop = nn.Dropout(p=drop_rate)
         Block_unit = eval(block_unit)
 
         dpr = np.linspace(0, drop_path_rate, sum(depth))
