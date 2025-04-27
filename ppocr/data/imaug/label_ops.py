@@ -21,10 +21,8 @@ import os
 from enum import Enum
 import copy
 import numpy as np
-import string
 from shapely.geometry import LineString, Point, Polygon
 import json
-import copy
 import random
 from random import sample
 from collections import defaultdict
@@ -166,6 +164,38 @@ class BaseRecLabelEncode(object):
         return text_list
 
 
+class BaseRecLabelEncodeWithUnkToken(BaseRecLabelEncode):
+    def __init__(
+        self,
+        max_text_length,
+        character_dict_path=None,
+        use_space_char=False,
+        lower=False,
+    ):
+        super(BaseRecLabelEncodeWithUnkToken, self).__init__(
+            max_text_length, character_dict_path, use_space_char, lower
+        )
+
+    def add_special_char(self, dict_character):
+        dict_character = ["unk"] + dict_character
+        return dict_character
+
+    def encode(self, text):
+        if len(text) == 0 or len(text) > self.max_text_len:
+            return None
+        if self.lower:
+            text = text.lower()
+        text_list = []
+        for char in text:
+            if char not in self.dict:
+                text_list.append(self.dict["unk"])
+            else:
+                text_list.append(self.dict[char])
+        if len(text_list) == 0:
+            return None
+        return text_list
+
+
 class CTCLabelEncode(BaseRecLabelEncode):
     """Convert between text-label and text-index"""
 
@@ -192,6 +222,39 @@ class CTCLabelEncode(BaseRecLabelEncode):
         return data
 
     def add_special_char(self, dict_character):
+        dict_character = ["blank"] + dict_character
+        return dict_character
+
+
+class CTCRecLabelEncodeWithUnkToken(BaseRecLabelEncodeWithUnkToken):
+    def __init__(
+        self,
+        max_text_length,
+        character_dict_path=None,
+        use_space_char=False,
+        lower=False,
+    ):
+        super(CTCRecLabelEncodeWithUnkToken, self).__init__(
+            max_text_length, character_dict_path, use_space_char, lower
+        )
+
+    def __call__(self, data):
+        text = data["label"]
+        text = self.encode(text)
+        if text is None:
+            return None
+        data["length"] = np.array(len(text))
+        text = text + [0] * (self.max_text_len - len(text))
+        data["label"] = np.array(text)
+
+        label = [0] * len(self.character)
+        for x in text:
+            label[x] += 1
+        data["label_ace"] = np.array(label)
+        return data
+
+    def add_special_char(self, dict_character):
+        dict_character = super().add_special_char(dict_character)
         dict_character = ["blank"] + dict_character
         return dict_character
 
@@ -1062,7 +1125,6 @@ class VQATokenLabelEncode(object):
     def split_bbox(self, bbox, text, tokenizer):
         words = text.split()
         token_bboxes = []
-        curr_word_idx = 0
         x1, y1, x2, y2 = bbox
         unit_w = (x2 - x1) / len(text)
         for idx, word in enumerate(words):
@@ -1341,6 +1403,7 @@ class NRTRLabelEncode(BaseRecLabelEncode):
     def add_special_char(self, dict_character):
         dict_character = ["blank", "<unk>", "<s>", "</s>"] + dict_character
         return dict_character
+
 
 class ParseQLabelEncode(BaseRecLabelEncode):
     """Convert between text-label and text-index"""
@@ -1799,7 +1862,6 @@ class LatexOCRLabelEncode(object):
         return_length=False,
         verbose=True,
     ):
-
         if return_token_type_ids is None:
             return_token_type_ids = "token_type_ids" in self.model_input_names
         if return_attention_mask is None:
@@ -1915,7 +1977,6 @@ class PaddingStrategy(ExplicitEnum):
 
 
 class UniMERNetLabelEncode(object):
-
     SPECIAL_TOKENS_ATTRIBUTES = [
         "bos_token",
         "eos_token",
@@ -2111,7 +2172,6 @@ class UniMERNetLabelEncode(object):
         return_length=False,
         verbose=True,
     ):
-
         if return_token_type_ids is None:
             return_token_type_ids = "token_type_ids" in self.model_input_names
         if return_attention_mask is None:

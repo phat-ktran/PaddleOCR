@@ -597,7 +597,7 @@ class SVTRNet(nn.Layer):
     def forward_features(self, x):
         x = self.patch_embed(x)
         x = x + self.pos_embed
-        x = self.pos_drop(x)
+        # x = self.pos_drop(x)
         for blk in self.blocks1:
             x = blk(x)
         if self.patch_merging is not None:
