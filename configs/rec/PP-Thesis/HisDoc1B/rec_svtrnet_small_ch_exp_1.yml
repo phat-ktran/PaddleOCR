@@ -3,11 +3,11 @@ Global:
   epoch_num: 100
   log_smooth_window: 20
   print_batch_step: 10
-  save_model_dir: ./output/rec_ppv5ss1_svtrnet_small_ch_exp_1/
-  save_epoch_step: 10
+  save_model_dir: /content/drive/MyDrive/PP-Thesis/output/rec_ppv5ss1_svtrnet_small_ch_exp_1/
+  save_epoch_step: 1
   eval_batch_step:
-    - 0
-    - 2000
+    - 12500
+    - 8333
   cal_metric_during_train: true
   pretrained_model: null
   checkpoints: null
@@ -155,5 +155,5 @@ Eval:
     shuffle: false
     drop_last: false
     batch_size_per_card: 192
-    num_workers: 4
+    num_workers: 8
 profiler_options: null
