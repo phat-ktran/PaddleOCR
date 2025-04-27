@@ -121,7 +121,7 @@ Train:
         - length
   loader:
     shuffle: true
-    batch_size_per_card: 256
+    batch_size_per_card: 192
     drop_last: true
     num_workers: 8
 Eval:
@@ -147,6 +147,6 @@ Eval:
   loader:
     shuffle: false
     drop_last: false
-    batch_size_per_card: 384
+    batch_size_per_card: 192
     num_workers: 4
 profiler_options: null
