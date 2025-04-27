@@ -68,8 +68,7 @@ PostProcess:
 
 Metric:
   name: RecMetric
-  main_indicator: acc
-  is_filter: True
+  main_indicator: "char_acc"
 
 Train:
   dataset:

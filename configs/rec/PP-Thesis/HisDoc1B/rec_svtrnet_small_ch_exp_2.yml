@@ -20,6 +20,7 @@ Global:
   use_space_char: false
   save_res_path: null
   d2s_train_image_shape: [3, 32, 564]
+
 Optimizer:
   name: AdamW
   beta1: 0.9
@@ -32,6 +33,7 @@ Optimizer:
     name: Cosine
     learning_rate: 0.0005
     warmup_epoch: 2
+
 Architecture:
   model_type: rec
   algorithm: SVTR
@@ -85,11 +87,14 @@ Architecture:
     name: CTCHead
 Loss:
   name: CTCLoss
+
 PostProcess:
   name: CTCLabelDecode
+
 Metric:
   name: RecMetric
-  main_indicator: acc
+  main_indicator: "char_acc"
+
 Train:
   dataset:
     name: LMDBDataSet
@@ -124,6 +129,7 @@ Train:
     batch_size_per_card: 224
     drop_last: true
     num_workers: 8
+
 Eval:
   dataset:
     name: LMDBDataSet
