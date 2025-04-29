@@ -47,7 +47,7 @@ Architecture:
     out_char_num: 40 # W//4 or W//8 or W/12
     out_channels: 256
     patch_merging: Conv
-    patch_size: [4, 4]
+    patch_size: [4, 8]
     embed_dim:
       - 128
       - 256
