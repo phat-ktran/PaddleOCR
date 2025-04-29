@@ -3,7 +3,7 @@ Global:
   epoch_num: 20
   log_smooth_window: 20
   print_batch_step: 5
-  save_model_dir: ./output/rec/paddle_v5_ss1/v1/parseq/small/exp_4/
+  save_model_dir: ./output/rec_ppv5ss1_vitparseq_small_exp_4/
   save_epoch_step: 3
   # evaluation is run every 5000 iterations after the 4000th iteration
   eval_batch_step: [0, 500]
@@ -69,8 +69,7 @@ PostProcess:
 
 Metric:
   name: RecMetric
-  main_indicator: acc
-  is_filter: True
+  main_indicator: "char_acc"
 
 Train:
   dataset:
@@ -90,7 +89,7 @@ Train:
           keep_keys: ['image', 'label', 'length'] # dataloader will return list in this order
   loader:
     shuffle: True
-    batch_size_per_card: 192
+    batch_size_per_card: 128
     drop_last: True
     num_workers: 4
 
@@ -111,5 +110,5 @@ Eval:
   loader:
     shuffle: False
     drop_last: False
-    batch_size_per_card: 384
+    batch_size_per_card: 192
     num_workers: 4
