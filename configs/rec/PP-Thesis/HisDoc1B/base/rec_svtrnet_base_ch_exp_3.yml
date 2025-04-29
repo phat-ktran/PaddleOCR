@@ -25,7 +25,7 @@ Optimizer:
   name: AdamW
   beta1: 0.9
   beta2: 0.999
-  epsilon: 1e-6
+  epsilon: 1.e-6
   weight_decay: 0.01
   no_weight_decay_name: norm pos_embed
   clip_norm: 5.0
