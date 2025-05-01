@@ -6,8 +6,8 @@ Global:
   save_model_dir: ./output/rec_ppv5ss1_svtrnet_base_ch_exp_3/
   save_epoch_step: 1
   eval_batch_step:
-    - 4166
-    - 1046
+    - 13880
+    - 2000
   cal_metric_during_train: true
   pretrained_model: null
   checkpoints: null
@@ -30,10 +30,11 @@ Optimizer:
   weight_decay: 0.05
   no_weight_decay_name: norm
   one_dim_param_no_weight_decay: True
+  clip_norm_global: 5.0
   lr:
     name: Cosine
-    learning_rate: 0.001 # 2gpus 768bs
-    warmup_epoch: 5
+    learning_rate: 0.00075 # 12gpus 96bs
+    warmup_epoch: 10
 
 Architecture:
   model_type: rec
@@ -134,7 +135,7 @@ Train:
             - length
   loader:
     shuffle: true
-    batch_size_per_card: 768
+    batch_size_per_card: 96
     drop_last: true
     num_workers: 8
 
@@ -161,5 +162,5 @@ Eval:
   loader:
     shuffle: false
     drop_last: false
-    batch_size_per_card: 768
+    batch_size_per_card: 96
     num_workers: 4
