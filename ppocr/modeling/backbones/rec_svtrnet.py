@@ -471,6 +471,7 @@ class SVTRNet(nn.Layer):
             shape=[1, num_patches, embed_dim[0]], default_initializer=zeros_
         )
         self.add_parameter("pos_embed", self.pos_embed)
+        self.pos_drop = nn.Dropout(p=drop_rate)
         Block_unit = eval(block_unit)
 
         dpr = np.linspace(0, drop_path_rate, sum(depth))
@@ -599,7 +600,7 @@ class SVTRNet(nn.Layer):
     def forward_features(self, x):
         x = self.patch_embed(x)
         x = x + self.pos_embed
-        # x = self.pos_drop(x)
+        x = self.pos_drop(x)
         for blk in self.blocks1:
             x = blk(x)
         if self.patch_merging is not None:

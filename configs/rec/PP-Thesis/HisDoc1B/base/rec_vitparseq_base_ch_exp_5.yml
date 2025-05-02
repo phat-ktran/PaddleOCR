@@ -3,8 +3,8 @@ Global:
   epoch_num: 20
   log_smooth_window: 20
   print_batch_step: 5
-  save_model_dir: ./output/rec_ppv5ss1_vitparseq_small_exp_3/
-  save_epoch_step: 3
+  save_model_dir: ./output/rec_ppv5ss1_vitparseq_small_exp_4/
+  save_epoch_step: 1
   # evaluation is run every 5000 iterations after the 4000th iteration
   eval_batch_step: [0, 500]
   cal_metric_during_train: True
@@ -20,6 +20,9 @@ Global:
   infer_mode: False
   use_space_char: False
   save_res_path: null
+  use_amp: true
+  use_wandb: true
+  distributed: true
 
 Optimizer:
   name: Adam
@@ -83,14 +86,14 @@ Train:
       - ParseQLabelEncode:
       - SVTRRecResizeImg:
           image_shape: [3, 32, 640]
-          padding: False
+          padding: true
       - KeepKeys:
           keep_keys: ["image", "label", "length"] # dataloader will return list in this order
   loader:
     shuffle: True
     batch_size_per_card: 128
     drop_last: True
-    num_workers: 4
+    num_workers: 12
 
 Eval:
   dataset:
@@ -103,11 +106,11 @@ Eval:
       - ParseQLabelEncode: # Class handling label
       - SVTRRecResizeImg:
           image_shape: [3, 32, 640]
-          padding: False
+          padding: true
       - KeepKeys:
           keep_keys: ["image", "label", "length"]
   loader:
     shuffle: False
     drop_last: False
-    batch_size_per_card: 192
-    num_workers: 4
+    batch_size_per_card: 384
+    num_workers: 8

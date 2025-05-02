@@ -3,11 +3,11 @@ Global:
   epoch_num: 20
   log_smooth_window: 20
   print_batch_step: 10
-  save_model_dir: ./output/rec_ppv5ss1_svtrnet_base_ch_exp_3/
+  save_model_dir: ./output/rec_ppv5ss1_svtrnet_base_ch_exp_3v1/
   save_epoch_step: 1
   eval_batch_step:
-    - 13880
-    - 2000
+    - 4166
+    - 1046
   cal_metric_during_train: true
   pretrained_model: null
   checkpoints: null
@@ -22,7 +22,7 @@ Global:
   use_amp: true
   use_wandb: true
   distributed: true
-  d2s_train_image_shape: [3, 32, 640]
+  d2s_train_image_shape: [3, 32, 564]
 
 Optimizer:
   name: AdamW
@@ -35,20 +35,14 @@ Optimizer:
   clip_norm_global: 5.0
   # lr:
   #   name: Cosine
-  #   learning_rate: 0.00075 # 12gpus 96bs
-  #   warmup_epoch: 10
+  #   learning_rate: 0.001 # 2gpus 768bs
+  #   warmup_epoch: 5
   lr:
     name: Step
     learning_rate: 0.00075 # 12gpus 96bs
     gamma: 0.95
     step_size: 1
     warmup_epoch: 10
-  # lr:
-  #   name: LinearWarmupCosine
-  #   learning_rate: 0.00075 # 12gpus 96bs
-  #   warmup_epoch: 10 * 1388
-  #   start_lr: 0.0
-  #   min_lr: 0.0000375
 
 Architecture:
   model_type: rec
@@ -58,11 +52,11 @@ Architecture:
     name: SVTRNet
     img_size:
       - 32
-      - 640
+      - 564
     out_char_num: 40 # W//4 or W//8 or W/12
     out_channels: 256
     patch_merging: Conv
-    patch_size: [4, 8]
+    patch_size: [4, 4]
     embed_dim:
       - 128
       - 256
@@ -132,7 +126,7 @@ Train:
           ext_data_num: 2
           image_shape:
             - 32
-            - 640
+            - 564
             - 3
       - RecAug: null
       - CTCLabelEncode: null
@@ -140,7 +134,7 @@ Train:
           image_shape:
             - 3
             - 32
-            - 640
+            - 564
           padding: true
       - KeepKeys:
           keep_keys:
@@ -149,7 +143,7 @@ Train:
             - length
   loader:
     shuffle: true
-    batch_size_per_card: 96
+    batch_size_per_card: 768
     drop_last: true
     num_workers: 8
 
@@ -166,7 +160,7 @@ Eval:
           image_shape:
             - 3
             - 32
-            - 640
+            - 564
           padding: true
       - KeepKeys:
           keep_keys:
@@ -176,5 +170,5 @@ Eval:
   loader:
     shuffle: false
     drop_last: false
-    batch_size_per_card: 96
+    batch_size_per_card: 768
     num_workers: 4
