@@ -20,6 +20,7 @@ Global:
   use_space_char: false
   save_res_path: null
   use_amp: true
+  use_wandb: true
   d2s_train_image_shape: [3, 32, 564]
 
 Optimizer:

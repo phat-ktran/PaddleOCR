@@ -20,6 +20,7 @@ Global:
   use_space_char: false
   save_res_path: null
   use_amp: true
+  use_wandb: true
   d2s_train_image_shape: [3, 32, 640]
 
 Optimizer:
@@ -31,10 +32,22 @@ Optimizer:
   no_weight_decay_name: norm
   one_dim_param_no_weight_decay: True
   clip_norm_global: 5.0
+  # lr:
+  #   name: Cosine
+  #   learning_rate: 0.00075 # 12gpus 96bs
+  #   warmup_epoch: 10
   lr:
-    name: Cosine
+    name: Step
     learning_rate: 0.00075 # 12gpus 96bs
+    gamma: 0.95
+    step_size: 1
     warmup_epoch: 10
+  # lr:
+  #   name: LinearWarmupCosine
+  #   learning_rate: 0.00075 # 12gpus 96bs
+  #   warmup_epoch: 10 * 1388
+  #   start_lr: 0.0
+  #   min_lr: 0.0000375
 
 Architecture:
   model_type: rec
