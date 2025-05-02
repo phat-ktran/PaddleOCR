@@ -26,15 +26,15 @@ Optimizer:
   name: AdamW
   beta1: 0.9
   beta2: 0.999
-  epsilon: 1.0e-06
-  weight_decay: 0.01
-  clip_norm: 5.0
+  epsilon: 1.e-8
+  weight_decay: 0.05
+  clip_norm_global: 5.0
   no_weight_decay_name: norm pos_embed
   one_dim_param_no_weight_decay: true
   lr:
     name: Cosine
-    learning_rate: 0.00004 # 1gpu 192bs
-    warmup_epoch: 2.0
+    learning_rate: 0.001 # 12gpu 128bs
+    warmup_epoch: 10
 
 Architecture:
   model_type: rec
@@ -130,7 +130,7 @@ Train:
             - length
   loader:
     shuffle: true
-    batch_size_per_card: 192
+    batch_size_per_card: 128
     drop_last: true
     num_workers: 12
 
@@ -157,6 +157,6 @@ Eval:
   loader:
     shuffle: false
     drop_last: false
-    batch_size_per_card: 192
+    batch_size_per_card: 128
     num_workers: 12
 profiler_options: null
