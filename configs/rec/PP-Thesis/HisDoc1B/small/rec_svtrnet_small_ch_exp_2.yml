@@ -6,7 +6,7 @@ Global:
   save_model_dir: ./output/rec_ppv5ss1_svtrnet_small_ch_exp_2/
   save_epoch_step: 1
   eval_batch_step:
-    - 12500
+    - 27760
     - 8333
   cal_metric_during_train: true
   pretrained_model: null
@@ -130,7 +130,7 @@ Train:
             - length
   loader:
     shuffle: true
-    batch_size_per_card: 128
+    batch_size_per_card: 96
     drop_last: true
     num_workers: 12
 
@@ -157,6 +157,6 @@ Eval:
   loader:
     shuffle: false
     drop_last: false
-    batch_size_per_card: 128
+    batch_size_per_card: 96
     num_workers: 12
 profiler_options: null
