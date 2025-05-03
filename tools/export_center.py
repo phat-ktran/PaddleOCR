@@ -101,7 +101,7 @@ def main():
     logger.info("Number of character centers: {}".format(len(char_center)))
 
     # serialize to disk
-    with open("train_center.pkl", "wb") as f:
+    with open("./train_center.pkl", "wb") as f:
         pickle.dump(char_center, f)
     return
 
