@@ -26,9 +26,6 @@ import datetime
 import paddle
 import paddle.distributed as dist
 from tqdm import tqdm
-import cv2
-import numpy as np
-import copy
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 
 from ppocr.utils.stats import TrainingStats
@@ -157,7 +154,7 @@ def check_device(use_gpu, use_xpu=False, use_npu=False, use_mlu=False, use_gcu=F
         if use_gcu and not paddle.device.is_compiled_with_custom_device("gcu"):
             print(err.format("use_gcu", "gcu", "gcu", "use_gcu"))
             sys.exit(1)
-    except Exception as e:
+    except Exception:
         pass
 
 
@@ -226,8 +223,7 @@ def train(
         )
         if len(valid_dataloader) == 0:
             logger.info(
-                "No Images in eval dataset, evaluation during training "
-                "will be disabled"
+                "No Images in eval dataset, evaluation during training will be disabled"
             )
             start_eval_step = 1e111
         logger.info(
@@ -446,8 +442,8 @@ def train(
                 max_mem_reserved_str = ""
                 max_mem_allocated_str = ""
                 if paddle.device.is_compiled_with_cuda() and print_mem_info:
-                    max_mem_reserved_str = f", max_mem_reserved: {paddle.device.cuda.max_memory_reserved() // (1024 ** 2)} MB,"
-                    max_mem_allocated_str = f" max_mem_allocated: {paddle.device.cuda.max_memory_allocated() // (1024 ** 2)} MB"
+                    max_mem_reserved_str = f", max_mem_reserved: {paddle.device.cuda.max_memory_reserved() // (1024**2)} MB,"
+                    max_mem_allocated_str = f" max_mem_allocated: {paddle.device.cuda.max_memory_allocated() // (1024**2)} MB"
                 strs = (
                     "epoch: [{}/{}], global_step: {}, {}, avg_reader_cost: "
                     "{:.5f} s, avg_batch_cost: {:.5f} s, avg_samples: {}, "
@@ -680,8 +676,8 @@ def eval(
                         preds = model(batch)
                     elif model_type in ["sr"]:
                         preds = model(batch)
-                        sr_img = preds["sr_img"]
-                        lr_img = preds["lr_img"]
+                        preds["sr_img"]
+                        preds["lr_img"]
                     else:
                         preds = model(images)
                 preds = to_float32(preds)
@@ -696,8 +692,8 @@ def eval(
                     preds = model(batch)
                 elif model_type in ["sr"]:
                     preds = model(batch)
-                    sr_img = preds["sr_img"]
-                    lr_img = preds["lr_img"]
+                    preds["sr_img"]
+                    preds["lr_img"]
                 else:
                     preds = model(images)
 
@@ -766,29 +762,54 @@ def update_center(char_center, post_result, preds):
     return char_center
 
 
-def get_center(model, eval_dataloader, post_process_class):
-    pbar = tqdm(total=len(eval_dataloader), desc="get center:")
-    max_iter = (
-        len(eval_dataloader) - 1
-        if platform.system() == "Windows"
-        else len(eval_dataloader)
-    )
-    char_center = dict()
-    for idx, batch in enumerate(eval_dataloader):
-        if idx >= max_iter:
-            break
-        images = batch[0]
-        start = time.time()
-        preds = model(images)
-
-        batch = [item.numpy() for item in batch]
-        # Obtain usable results from post-processing methods
-        post_result = post_process_class(preds, batch[1])
-
-        # update char_center
-        char_center = update_center(char_center, post_result, preds)
-        pbar.update(1)
-
+def get_center(
+    model,
+    eval_dataloader,
+    post_process_class,
+    scaler,
+    amp_level,
+    amp_custom_black_list,
+    amp_custom_white_list=[],
+    amp_dtype="float16",
+):
+    model.eval()
+    with paddle.no_grad():
+        total_frame = 0.0
+        total_time = 0.0
+        pbar = tqdm(total=len(eval_dataloader), desc="get center:")
+        max_iter = (
+            len(eval_dataloader) - 1
+            if platform.system() == "Windows"
+            else len(eval_dataloader)
+        )
+        char_center = dict()
+        for idx, batch in enumerate(eval_dataloader):
+            if idx >= max_iter:
+                break
+            images = batch[0]
+            start = time.time()
+            if scaler:
+                with paddle.amp.auto_cast(
+                    level=amp_level,
+                    custom_black_list=amp_custom_black_list,
+                    dtype=amp_dtype,
+                ):
+                    preds = model(images)
+                preds = to_float32(preds)
+            else:
+                preds = model(images)
+            
+            batch = [item.numpy() for item in batch]
+            # Obtain usable results from post-processing methods
+            total_time += time.time() - start
+            # Obtain usable results from post-processing methods
+            post_result = post_process_class(preds, batch[1])
+    
+            # update char_center
+            char_center = update_center(char_center, post_result, preds)
+            pbar.update(1)
+            total_frame += len(images)
+    
     pbar.close()
     for key in char_center.keys():
         char_center[key] = char_center[key][0]
@@ -797,7 +818,6 @@ def get_center(model, eval_dataloader, post_process_class):
 
 def preprocess(is_train=False):
     FLAGS = ArgsParser().parse_args()
-    profiler_options = FLAGS.profiler_options
     config = load_config(FLAGS.config)
     config = merge_config(config, FLAGS.opt)
     profile_dic = {"profiler_options": FLAGS.profiler_options}
@@ -862,7 +882,7 @@ def preprocess(is_train=False):
         "NomNaCTC",
         "NomNaDecoder",
         "NomNaAttention",
-        #=============
+        # =============
         "CT",
         "RFL",
         "DRRG",
@@ -899,15 +919,14 @@ def preprocess(is_train=False):
 
     if "use_visualdl" in config["Global"] and config["Global"]["use_visualdl"]:
         logger.warning(
-            "You are using VisualDL, the VisualDL is deprecated and "
-            "removed in ppocr!"
+            "You are using VisualDL, the VisualDL is deprecated and removed in ppocr!"
         )
         log_writer = None
     if (
         "use_wandb" in config["Global"] and config["Global"]["use_wandb"]
     ) or "wandb" in config:
         save_dir = config["Global"]["save_model_dir"]
-        wandb_writer_path = "{}/wandb".format(save_dir)
+        "{}/wandb".format(save_dir)
         if "wandb" in config:
             wandb_params = config["wandb"]
         else:
