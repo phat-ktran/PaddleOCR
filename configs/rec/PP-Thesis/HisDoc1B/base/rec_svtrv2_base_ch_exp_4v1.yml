@@ -4,7 +4,7 @@ Global:
   epoch_num: 20
   log_smooth_window: 20
   print_batch_step: 10
-  save_model_dir: ./output/rec_ppv5ss1_svtrv2_base_ch_exp_4/
+  save_model_dir: ./output/rec_ppv5ss1_svtrv2_base_ch_exp_4v1/
   save_epoch_step: 1
   eval_batch_step:
     - 13880
@@ -53,13 +53,13 @@ Architecture:
     name: SVTRv2
     use_pos_embed: False
     dims: [128, 256, 384]
-    depths: [6, 6, 6]
+    depths: [3, 6, 9]
     num_heads: [4, 8, 12]
     mixer:
       [
-        ["Conv", "Conv", "Conv", "Conv", "Conv", "Conv"],
+        ["Conv", "Conv", "Conv"],
         ["Conv", "Conv", "Global", "Global", "Global", "Global"],
-        ["Global", "Global", "Global", "Global", "Global", "Global"],
+        ["Global", "Global", "Global", "Global", "Global", "Global", "Global", "Global", "Global"],
       ]
     local_k: [[5, 5], [5, 5], [-1, -1]]
     sub_k: [[2, 1], [2, 1], [-1, -1]]

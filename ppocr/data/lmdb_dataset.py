@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import gc
 import numpy as np
 import io
 import math
@@ -200,6 +201,9 @@ class MultiScaleLMDBDataSet(LMDBDataSet):
                     img = cv2.imdecode(imgdata, 1)
                     h, w = img.shape[:2]
                     ratio = float(w) / float(h)
+                    
+                    del img_buf, img
+                    gc.collect()
 
                     # Store the ratio and corresponding index
                     self.wh_ratio.append(ratio)
@@ -287,14 +291,7 @@ class MultiScaleLMDBDataSet(LMDBDataSet):
 
             img_buf, label = sample_info
 
-            # Decode image
-            imgdata = np.frombuffer(img_buf, dtype="uint8")
-            img = cv2.imdecode(imgdata, 1)
-
-            if img is None:
-                raise Exception(f"Failed to decode image at index {file_idx}")
-
-            data = {"image": img, "label": label}
+            data = {"image": img_buf, "label": label}
 
             # Get external data if needed
             data["ext_data"] = self.get_ext_data()

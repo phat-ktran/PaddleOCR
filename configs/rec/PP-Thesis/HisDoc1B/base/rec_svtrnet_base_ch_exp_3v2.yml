@@ -108,15 +108,28 @@ Architecture:
     encoder_type: reshape
   Head:
     name: CTCHead
+    # mid_channels: 96
+    fc_decay: 0.00002
+    return_feats: true
+
 Loss:
-  name: CTCLoss
+  name: CombinedLoss
+  loss_config_list:
+    - CTCLoss:
+        use_focal_loss: false
+        weight: 1.0
+    - CenterLoss:
+        weight: 0.05
+        num_classes: 25869
+        feat_dim: 256
+        center_file_path: null
 
 PostProcess:
   name: CTCLabelDecode
 
 Metric:
   name: RecMetric
-  main_indicator: "char_acc"
+  main_indicator: char_acc
 
 Train:
   dataset:

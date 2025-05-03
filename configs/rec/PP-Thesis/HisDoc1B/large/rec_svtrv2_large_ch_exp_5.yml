@@ -1,11 +1,12 @@
 Global:
   debug: false
   use_gpu: true
-  epoch_num: 20
+  epoch_num: 200
   log_smooth_window: 20
   print_batch_step: 10
-  save_model_dir: ./output/rec_ppv5ss1_svtrv2_base_ch_exp_4/
+  save_model_dir: ./output/rec_ppv5ss1_svtrv2_large_ch_exp_5/
   save_epoch_step: 1
+  # evaluation is run every 2000 iterations after the 0th iteration
   eval_batch_step:
     - 13880
     - 2000
@@ -23,50 +24,68 @@ Global:
   use_amp: true
   use_wandb: true
   distributed: true
-  d2s_train_image_shape: [3, 32, 640]
 
 Optimizer:
   name: AdamW
   beta1: 0.9
-  beta2: 0.999
-  epsilon: 1.e-8
+  beta2: 0.99
+  epsilon: 1.0e-08
   weight_decay: 0.05
-  no_weight_decay_name: norm
-  one_dim_param_no_weight_decay: True
-  clip_norm_global: 5.0
-  # lr:
-  #   name: Cosine
-  #   learning_rate: 0.001 # 8gpus 192bs
-  #   warmup_epoch: 5
+  no_weight_decay_name: norm pos_embed char_node_embed pos_node_embed char_pos_embed vis_pos_embed
+  one_dim_param_no_weight_decay: true
   lr:
-    name: Step
-    learning_rate: 0.00075 # 12gpus 96bs
-    gamma: 0.95
-    step_size: 1
-    warmup_epoch: 10
+    name: Cosine
+    learning_rate: 0.00025 # 8gpus 64bs
+    warmup_epoch: 5
 
 Architecture:
   model_type: rec
-  algorithm: SVTR_HGNet
-  Transform:
+  algorithm: SVTR_LCNet
+  Transform: null
   Backbone:
-    name: SVTRv2
-    use_pos_embed: False
-    dims: [128, 256, 384]
-    depths: [6, 6, 6]
-    num_heads: [4, 8, 12]
+    name: SVTRNet
+    img_size:
+      - 32
+      - 640
+    out_char_num: *max_text_length
+    out_channels: 512
+    patch_merging: Conv
+    embed_dim: [192, 256, 512]
+    depth: [6, 6, 9]
+    num_heads: [6, 8, 16]
     mixer:
       [
-        ["Conv", "Conv", "Conv", "Conv", "Conv", "Conv"],
-        ["Conv", "Conv", "Global", "Global", "Global", "Global"],
-        ["Global", "Global", "Global", "Global", "Global", "Global"],
+        "Conv",
+        "Conv",
+        "Conv",
+        "Conv",
+        "Conv",
+        "Conv",
+        "Conv",
+        "Conv",
+        "Conv",
+        "Global",
+        "Global",
+        "Global",
+        "Global",
+        "Global",
+        "Global",
+        "Global",
+        "Global",
+        "Global",
+        "Global",
+        "Global",
+        "Global",
       ]
-    local_k: [[5, 5], [5, 5], [-1, -1]]
-    sub_k: [[2, 1], [2, 1], [-1, -1]]
+    local_mixer: [[5, 5], [5, 5], [5, 5]]
     last_stage: False
-    use_pool: True
+    prenorm: True
   Head:
     name: MultiHead
+    use_pool: true
+    pool_kernel_size: [4, 2]
+    pool_stride: [4, 2]
+    use_pos: true
     head_list:
       - CTCHead:
           Neck:
@@ -79,9 +98,8 @@ Architecture:
           Head:
             fc_decay: 0.00001
       - NRTRHead:
-          nrtr_dim: 384
+          nrtr_dim: 512
           max_text_length: *max_text_length
-          num_decoder_layers: 2
 
 Loss:
   name: MultiLoss
@@ -134,7 +152,7 @@ Train:
     shuffle: true
     batch_size_per_card: *bs
     drop_last: true
-    num_workers: 12
+    num_workers: 8
 Eval:
   dataset:
     name: LMDBDataSet
@@ -158,4 +176,4 @@ Eval:
     shuffle: false
     drop_last: false
     batch_size_per_card: 128
-    num_workers: 8
+    num_workers: 4

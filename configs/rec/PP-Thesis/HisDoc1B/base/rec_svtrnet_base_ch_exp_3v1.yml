@@ -110,7 +110,7 @@ PostProcess:
 
 Metric:
   name: RecMetric
-  main_indicator: "char_acc"
+  main_indicator: char_acc
 
 Train:
   dataset:
