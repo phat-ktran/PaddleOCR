@@ -4,10 +4,10 @@ Global:
   log_smooth_window: 20
   print_batch_step: 10
   save_model_dir: ./output/rec_ppv5ss1_svtrnet_small_ch_exp_2/
-  save_epoch_step: 10
+  save_epoch_step: 1
   eval_batch_step:
-    - 0
-    - 2000
+    - 27760
+    - 8333
   cal_metric_during_train: true
   pretrained_model: null
   checkpoints: null
@@ -15,24 +15,26 @@ Global:
   use_visualdl: false
   infer_img: null
   character_dict_path: ppocr/utils/dict/PP-Thesis/hisdoc1b_ss1.txt
-  max_text_length: 47
+  max_text_length: 40
   infer_mode: false
   use_space_char: false
   save_res_path: null
-  d2s_train_image_shape: [3, 32, 564]
+  use_amp: true
+  d2s_train_image_shape: [3, 32, 640]
 
 Optimizer:
   name: AdamW
   beta1: 0.9
-  beta2: 0.99
-  epsilon: 1.0e-08
+  beta2: 0.999
+  epsilon: 1.e-8
   weight_decay: 0.05
+  clip_norm_global: 5.0
   no_weight_decay_name: norm pos_embed
   one_dim_param_no_weight_decay: true
   lr:
     name: Cosine
-    learning_rate: 0.0005
-    warmup_epoch: 2
+    learning_rate: 0.001 # 12gpu 128bs
+    warmup_epoch: 10
 
 Architecture:
   model_type: rec
@@ -42,10 +44,11 @@ Architecture:
     name: SVTRNet
     img_size:
       - 32
-      - 564
-    out_char_num: 47 # W//4 or W//8 or W/12
-    out_channels: 96
+      - 640
+    out_char_num: 40 # W//4 or W//8 or W/12
+    out_channels: 192
     patch_merging: Conv
+    patch_size: [4, 4]
     embed_dim:
       - 64
       - 128
@@ -85,6 +88,7 @@ Architecture:
     encoder_type: reshape
   Head:
     name: CTCHead
+
 Loss:
   name: CTCLoss
 
@@ -109,7 +113,7 @@ Train:
           ext_data_num: 2
           image_shape:
             - 32
-            - 564
+            - 640
             - 3
       - RecAug: null
       - CTCLabelEncode: null
@@ -117,7 +121,7 @@ Train:
           image_shape:
             - 3
             - 32
-            - 564
+            - 640
           padding: true
       - KeepKeys:
           keep_keys:
@@ -128,7 +132,7 @@ Train:
     shuffle: true
     batch_size_per_card: 96
     drop_last: true
-    num_workers: 8
+    num_workers: 12
 
 Eval:
   dataset:
@@ -143,7 +147,7 @@ Eval:
           image_shape:
             - 3
             - 32
-            - 564
+            - 640
           padding: true
       - KeepKeys:
           keep_keys:
@@ -154,5 +158,5 @@ Eval:
     shuffle: false
     drop_last: false
     batch_size_per_card: 96
-    num_workers: 8
+    num_workers: 12
 profiler_options: null

@@ -54,9 +54,21 @@ class ArgsParser(ArgumentParser):
             help="The option of profiler, which should be in format "
             '"key1=value1;key2=value2;key3=value3".',
         )
+        self.add_argument(
+            "--input_size",
+            type=str,
+            default=None,
+            help="Specify the input size for the model in the format 'batch,channel,height,width'.",
+        )
 
     def parse_args(self, argv=None):
         args = super(ArgsParser, self).parse_args(argv)
+        try:
+            input_size = tuple(int(dim) for dim in args.input_size.split(","))
+            assert len(input_size) == 4, "input_size must be in the format 'batch,channel,height,width'."
+            args.input_size = input_size
+        except ValueError:
+            raise ValueError("input_size must contain only integers separated by commas.")
         assert args.config is not None, "Please specify --config=configure_file_path."
         args.opt = self._parse_opt(args.opt)
         return args
@@ -186,7 +198,7 @@ def main():
             )
         model = to_static(model, input_spec=specs)
 
-    paddle.summary(model, input_size=(2, 3, 32, 564))
+    paddle.summary(model, input_size=FLAGS.input_size)
 
 
 if __name__ == "__main__":

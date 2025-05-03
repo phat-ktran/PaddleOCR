@@ -65,7 +65,8 @@ def main():
 
     # get features from train data
     char_center = program.get_center(model, eval_dataloader, post_process_class)
-
+    logger.info("Number of character centers: {}".format(len(char_center)))
+    
     # serialize to disk
     with open("train_center.pkl", "wb") as f:
         pickle.dump(char_center, f)

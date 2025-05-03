@@ -358,9 +358,9 @@ class PatchEmbed(nn.Layer):
 
     def forward(self, x):
         B, C, H, W = x.shape
-        assert (
-            H == self.img_size[0] and W == self.img_size[1]
-        ), f"Input image size ({H}*{W}) doesn't match model ({self.img_size[0]}*{self.img_size[1]})."
+        assert H == self.img_size[0] and W == self.img_size[1], (
+            f"Input image size ({H}*{W}) doesn't match model ({self.img_size[0]}*{self.img_size[1]})."
+        )
         x = self.proj(x).flatten(2).transpose((0, 2, 1))
         return x
 
@@ -420,6 +420,7 @@ class SVTRNet(nn.Layer):
     def __init__(
         self,
         img_size=[32, 100],
+        patch_size=[4, 4],
         in_channels=3,
         embed_dim=[64, 128, 256],
         depth=[3, 6, 3],
@@ -462,6 +463,7 @@ class SVTRNet(nn.Layer):
             in_channels=in_channels,
             embed_dim=embed_dim[0],
             sub_num=sub_num,
+            patch_size=patch_size
         )
         num_patches = self.patch_embed.num_patches
         self.HW = [img_size[0] // (2**sub_num), img_size[1] // (2**sub_num)]
@@ -469,6 +471,7 @@ class SVTRNet(nn.Layer):
             shape=[1, num_patches, embed_dim[0]], default_initializer=zeros_
         )
         self.add_parameter("pos_embed", self.pos_embed)
+        self.pos_drop = nn.Dropout(p=drop_rate)
         Block_unit = eval(block_unit)
 
         dpr = np.linspace(0, drop_path_rate, sum(depth))
@@ -597,7 +600,7 @@ class SVTRNet(nn.Layer):
     def forward_features(self, x):
         x = self.patch_embed(x)
         x = x + self.pos_embed
-        # x = self.pos_drop(x)
+        x = self.pos_drop(x)
         for blk in self.blocks1:
             x = blk(x)
         if self.patch_merging is not None:
