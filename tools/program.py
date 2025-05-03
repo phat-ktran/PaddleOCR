@@ -774,6 +774,7 @@ def get_center(model, eval_dataloader, post_process_class):
         else len(eval_dataloader)
     )
     char_center = dict()
+    model.eval()
     for idx, batch in enumerate(eval_dataloader):
         if idx >= max_iter:
             break
