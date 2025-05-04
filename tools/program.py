@@ -209,6 +209,14 @@ def train(
     profiler_options = config["profiler_options"]
     print_mem_info = config["Global"].get("print_mem_info", True)
     uniform_output_enabled = config["Global"].get("uniform_output_enabled", False)
+    
+    hf = config["Global"].get("huggingface", dict())
+    push_to_hub = hf.get("push_to_hub", False)
+    hf_token = hf.get("hf_token", None)
+    repo_id = hf.get("repo_id", False)
+    repo_type = hf.get("repo_type", "dataset") # dataset, model, space
+    ignore_patterns = hf.get("ignore_patterns", None)
+    run_as_future = hf.get("run_as_future", None)
 
     global_step = 0
     if "global_step" in pre_best_model_dict:
@@ -534,6 +542,12 @@ def train(
                         best_model_dict=best_model_dict,
                         epoch=epoch,
                         global_step=global_step,
+                        push_to_hub=push_to_hub,
+                        hf_token=hf_token,
+                        repo_id=repo_id,
+                        repo_type=repo_type,
+                        ignore_patterns=ignore_patterns,
+                        run_as_future=run_as_future
                     )
                 best_str = "best metric, {}".format(
                     ", ".join(
@@ -582,6 +596,12 @@ def train(
                 best_model_dict=best_model_dict,
                 epoch=epoch,
                 global_step=global_step,
+                push_to_hub=push_to_hub,
+                hf_token=hf_token,
+                repo_id=repo_id,
+                repo_type=repo_type,
+                ignore_patterns=ignore_patterns,
+                run_as_future=run_as_future
             )
 
             if log_writer is not None:
@@ -612,6 +632,12 @@ def train(
                 epoch=epoch,
                 global_step=global_step,
                 done_flag=epoch == config["Global"]["epoch_num"],
+                push_to_hub=push_to_hub,
+                hf_token=hf_token,
+                repo_id=repo_id,
+                repo_type=repo_type,
+                ignore_patterns=ignore_patterns,
+                run_as_future=run_as_future
             )
             if log_writer is not None:
                 log_writer.log_model(

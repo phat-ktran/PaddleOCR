@@ -15,3 +15,4 @@ albumentations
 # to be compatible with albumentations
 albucore
 packaging
+huggingface-hub>=0.30.2

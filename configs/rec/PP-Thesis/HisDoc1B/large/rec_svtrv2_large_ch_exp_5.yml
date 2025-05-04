@@ -24,6 +24,13 @@ Global:
   use_amp: true
   use_wandb: true
   distributed: true
+  huggingface:
+    push_to_hub: true
+    hf_token: null
+    repo_id: "PPThes/checkpoints"
+    repo_type: "dataset"
+    ignore_patterns: "**/wandb/*"
+    run_as_future: true
 
 Optimizer:
   name: AdamW
