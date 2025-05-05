@@ -6,7 +6,7 @@ Global:
   save_model_dir: ./output/rec_ppv5ss1_svtrnet_base_ch_exp_3v2/
   save_epoch_step: 1
   eval_batch_step:
-    - 13880
+    - 27760
     - 2000
   cal_metric_during_train: true
   pretrained_model: null
@@ -20,10 +20,13 @@ Global:
   use_space_char: false
   save_res_path: null
   use_amp: true
-  use_wandb: true
   distributed: true
+  wandb:  
+    project: PP-Thesis-Rec-Exp-3 
+    entity: trankim147-vnu-hcmus
+    name: Experiment-3v2
   huggingface:
-    push_to_hub: true
+    push_to_hub: false
     hf_token: null
     repo_id: "PPThes/checkpoints"
     repo_type: "dataset"
@@ -129,7 +132,7 @@ Loss:
         weight: 0.05
         num_classes: 25869
         feat_dim: 256
-        center_file_path: null
+        center_file_path: ppocr/utils/context/PP-Thesis/train_center.pkl
 
 PostProcess:
   name: CTCLabelDecode
@@ -171,7 +174,7 @@ Train:
     shuffle: true
     batch_size_per_card: 96
     drop_last: true
-    num_workers: 8
+    num_workers: 12
 
 Eval:
   dataset:
@@ -197,4 +200,4 @@ Eval:
     shuffle: false
     drop_last: false
     batch_size_per_card: 96
-    num_workers: 4
+    num_workers: 8

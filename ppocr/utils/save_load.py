@@ -271,41 +271,42 @@ def save_model(
     else:
         logger.info("save model in {}".format(model_prefix))
 
-    kwargs.pop("push_to_hub", False)
-    try:
-        repo_id = kwargs.pop("repo_id", None)
-        repo_type = kwargs.pop("repo_type", None)
-        ignore_patterns = kwargs.pop("ignore_patterns", None)
-        run_as_future = kwargs.pop("run_as_future", None)
-        token = kwargs.pop("hf_token", None)
-        commit_message = kwargs.pop(
-            "commit_message",
-            f"Upload {prefix} model" + (" (best model)" if is_best else ""),
-        )
-
-        if repo_id is None:
-            logger.warning("repo_id not provided, cannot push to Hugging Face Hub")
-            return
-
-        # Initialize HF API
-        api = HfApi(token=token)
-
-        # Push to Hub
-        logger.info(f"Pushing model to Hugging Face Hub: {repo_id}")
-        api.upload_folder(
-            folder_path=model_path,
-            repo_id=repo_id,
-            repo_type=repo_type,
-            ignore_patterns=ignore_patterns,
-            run_as_future=run_as_future,
-            commit_message=commit_message,
-        )
-
-        logger.info(f"Model successfully pushed to HF Hub: {repo_id}")
-    except ImportError:
-        logger.warning("huggingface_hub not installed. Cannot push to Hub.")
-    except Exception as e:
-        logger.error(f"Failed to push to Hugging Face Hub: {str(e)}")
+    push_to_hub = kwargs.pop("push_to_hub", False)
+    if push_to_hub:
+        try:
+            repo_id = kwargs.pop("repo_id", None)
+            repo_type = kwargs.pop("repo_type", None)
+            ignore_patterns = kwargs.pop("ignore_patterns", None)
+            run_as_future = kwargs.pop("run_as_future", None)
+            token = kwargs.pop("hf_token", None)
+            commit_message = kwargs.pop(
+                "commit_message",
+                f"Upload {prefix} model" + (" (best model)" if is_best else ""),
+            )
+    
+            if repo_id is None:
+                logger.warning("repo_id not provided, cannot push to Hugging Face Hub")
+                return
+    
+            # Initialize HF API
+            api = HfApi(token=token)
+    
+            # Push to Hub
+            logger.info(f"Pushing model to Hugging Face Hub: {repo_id}")
+            api.upload_folder(
+                folder_path=model_path,
+                repo_id=repo_id,
+                repo_type=repo_type,
+                ignore_patterns=ignore_patterns,
+                run_as_future=run_as_future,
+                commit_message=commit_message,
+            )
+    
+            logger.info(f"Model successfully pushed to HF Hub: {repo_id}")
+        except ImportError:
+            logger.warning("huggingface_hub not installed. Cannot push to Hub.")
+        except Exception as e:
+            logger.error(f"Failed to push to Hugging Face Hub: {str(e)}")
 
 
 def update_train_results(config, prefix, metric_info, done_flag=False, last_num=5):
