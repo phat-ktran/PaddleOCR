@@ -175,6 +175,8 @@ def to_float32(preds):
                 preds[k] = preds[k].astype(paddle.float32)
     elif isinstance(preds, paddle.Tensor):
         preds = preds.astype(paddle.float32)
+    elif isinstance(preds, tuple):
+        preds = tuple(to_float32(x) for x in preds)
     return preds
 
 
