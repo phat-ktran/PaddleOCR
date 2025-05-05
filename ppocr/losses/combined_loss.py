@@ -17,6 +17,7 @@ import paddle.nn as nn
 
 from .rec_ctc_loss import CTCLoss
 from .center_loss import CenterLoss
+from .amp_center_loss import AmpCenterLoss
 from .ace_loss import ACELoss
 from .rec_sar_loss import SARLoss
 

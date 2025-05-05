@@ -6,8 +6,8 @@ Global:
   save_model_dir: ./output/rec_ppv5ss1_svtrnet_base_ch_exp_3v1/
   save_epoch_step: 1
   eval_batch_step:
-    - 4166
-    - 1046
+    - 27760
+    - 2000
   cal_metric_during_train: true
   pretrained_model: null
   checkpoints: null
@@ -23,13 +23,13 @@ Global:
   use_wandb: true
   distributed: true
   huggingface:
-    push_to_hub: true
+    push_to_hub: false
     hf_token: null
     repo_id: "PPThes/checkpoints"
     repo_type: "dataset"
     ignore_patterns: "**/wandb/*"
     run_as_future: true
-  d2s_train_image_shape: [3, 32, 564]
+  d2s_train_image_shape: [3, 32, 592]
 
 Optimizer:
   name: AdamW
@@ -59,11 +59,11 @@ Architecture:
     name: SVTRNet
     img_size:
       - 32
-      - 564
+      - 592
     out_char_num: 40 # W//4 or W//8 or W/12
     out_channels: 256
     patch_merging: Conv
-    patch_size: [4, 4]
+    patch_size: [4, 8]
     embed_dim:
       - 128
       - 256
@@ -133,7 +133,7 @@ Train:
           ext_data_num: 2
           image_shape:
             - 32
-            - 564
+            - 592
             - 3
       - RecAug: null
       - CTCLabelEncode: null
@@ -141,7 +141,7 @@ Train:
           image_shape:
             - 3
             - 32
-            - 564
+            - 592
           padding: true
       - KeepKeys:
           keep_keys:
@@ -150,9 +150,9 @@ Train:
             - length
   loader:
     shuffle: true
-    batch_size_per_card: 768
+    batch_size_per_card: 96
     drop_last: true
-    num_workers: 8
+    num_workers: 12
 
 Eval:
   dataset:
@@ -167,7 +167,7 @@ Eval:
           image_shape:
             - 3
             - 32
-            - 564
+            - 592
           padding: true
       - KeepKeys:
           keep_keys:
@@ -177,5 +177,5 @@ Eval:
   loader:
     shuffle: false
     drop_last: false
-    batch_size_per_card: 768
-    num_workers: 4
+    batch_size_per_card: 128
+    num_workers: 8

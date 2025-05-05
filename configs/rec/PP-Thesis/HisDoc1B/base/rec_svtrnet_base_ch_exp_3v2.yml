@@ -128,11 +128,11 @@ Loss:
     - CTCLoss:
         use_focal_loss: false
         weight: 1.0
-    - CenterLoss:
+    - AmpCenterLoss:
         weight: 0.05
         num_classes: 25869
         feat_dim: 256
-        center_file_path: null
+        center_file_path: ppocr/utils/context/PP-Thesis/train_center.pkl
 
 PostProcess:
   name: CTCLabelDecode
