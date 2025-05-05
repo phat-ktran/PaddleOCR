@@ -29,6 +29,7 @@ class CTCLoss(nn.Layer):
     def forward(self, predicts, batch):
         if isinstance(predicts, (list, tuple)):
             predicts = predicts[-1]
+            predicts = predicts.astype(paddle.float32)
         predicts = predicts.transpose((1, 0, 2))
         N, B, _ = predicts.shape
         preds_lengths = paddle.to_tensor(
