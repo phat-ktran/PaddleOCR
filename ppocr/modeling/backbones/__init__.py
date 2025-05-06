@@ -51,6 +51,7 @@ def build_backbone(config, model_type):
         from .rec_resnet_fpn import ResNetFPN
         from .rec_mv1_enhance import MobileNetV1Enhance
         from .rec_nomna_convnext import ConvNeXt
+        from .rec_focalnet import FocalNet
         from .rec_nomnanet import NomNaNet
         from .rec_nrtr_mtb import MTB
         from .rec_resnet_31 import ResNet31
@@ -79,6 +80,7 @@ def build_backbone(config, model_type):
             "MobileNetV1Enhance",
             "ConvNeXt",
             "NomNaNet",
+            "FocalNet",
             "MobileNetV3",
             "ResNet",
             "ResNetFPN",
