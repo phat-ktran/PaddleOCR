@@ -45,11 +45,9 @@ Optimizer:
   one_dim_param_no_weight_decay: True
   clip_norm_global: 5.0
   lr:
-    name: Step
-    learning_rate: 0.00075 # 12gpus 96bs
-    gamma: 0.95
-    step_size: 1
-    warmup_epoch: 10
+    name: Cosine
+    learning_rate: 0.001 # 12gpus 192bs
+    warmup_epoch: 5
 
 Architecture:
   model_type: rec
@@ -64,10 +62,10 @@ Architecture:
     patch_size: [4, 8]
     patch_mode: "pope" # "pope"
     sub_num: 3 # only when patch_mode is "pope"
-    embed_dim: 64
-    depths: [3, 3, 6, 3]
-    focal_levels: [2, 2, 2, 2]
-    focal_windows: [3, 3, 3, 3]
+    embed_dim: 128
+    depths: [3, 6, 3]
+    focal_levels: [2, 2, 2]
+    focal_windows: [3, 3, 3]
     subsample_stride: [2, 1]
     last_stage: true
 
@@ -130,9 +128,9 @@ Train:
             - length
   loader:
     shuffle: true
-    batch_size_per_card: 96
+    batch_size_per_card: 192
     drop_last: true
-    num_workers: 8
+    num_workers: 12
 
 Eval:
   dataset:
@@ -157,5 +155,5 @@ Eval:
   loader:
     shuffle: false
     drop_last: false
-    batch_size_per_card: 96
-    num_workers: 4
+    batch_size_per_card: 192
+    num_workers: 8
