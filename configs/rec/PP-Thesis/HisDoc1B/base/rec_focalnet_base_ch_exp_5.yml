@@ -22,9 +22,9 @@ Global:
   use_amp: true
   distributed: true
   wandb:
-    project: PP-Thesis-Rec-Exp-3
+    project: PP-Thesis-Rec-Exp-5
     entity: trankim147-vnu-hcmus
-    name: Experiment-3v2
+    name: Experiment-5
   huggingface:
     push_to_hub: false
     hf_token: null
