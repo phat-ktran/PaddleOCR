@@ -3,7 +3,7 @@ Global:
   epoch_num: 15
   log_smooth_window: 20
   print_batch_step: 10
-  save_model_dir: ./output/rec_ppv5ss1_focalnet_base_ch_exp_5/
+  save_model_dir: ./output/rec_ppv5ss1_focalnet_base_ch_exp_5v2/
   save_epoch_step: 1
   eval_batch_step:
     - 27760
@@ -15,7 +15,7 @@ Global:
   use_visualdl: false
   infer_img: null
   character_dict_path: ppocr/utils/dict/PP-Thesis/hisdoc1b_ss1.txt
-  max_text_length: 40
+  max_text_length: &max_text_length 40
   infer_mode: false
   use_space_char: false
   save_res_path: null
@@ -45,7 +45,7 @@ Optimizer:
   one_dim_param_no_weight_decay: True
   lr:
     name: Cosine
-    learning_rate: 0.00075 # 12gpus 128bs
+    learning_rate: 0.00075 # 12gpus 96bs
     warmup_epoch: 5
 
 Architecture:
@@ -66,7 +66,7 @@ Architecture:
     focal_levels: [2, 2, 2]
     focal_windows: [3, 3, 3]
     subsample_stride: [2, 1]
-    last_stage: true
+    last_stage: false
 
     # Normalization
     patch_norm: True
@@ -80,14 +80,33 @@ Architecture:
     drop_rate: 0.1
     drop_path_rate: 0.3
     last_drop: 0.1
-  Neck:
-    name: SequenceEncoder
-    encoder_type: reshape
   Head:
-    name: CTCHead
+    name: MultiHead
+    use_pool: true
+    use_pos: true
+    pool_kernel_size: [2, 4]
+    pool_stride: [2, 4]
+    head_list:
+      - CTCHead:
+          Neck:
+            name: svtr
+            dims: 512
+            depth: 2
+            hidden_dims: 256
+            kernel_size: [1, 3]
+            use_guide: True
+          Head:
+            fc_decay: 0.00001
+      - NRTRHead:
+          nrtr_dim: 512
+          num_decoder_layers: 4
+          max_text_length: *max_text_length
 
 Loss:
-  name: CTCLoss
+  name: MultiLoss
+  loss_config_list:
+    - CTCLoss:
+    - NRTRLoss:
 
 PostProcess:
   name: CTCLabelDecode
@@ -127,7 +146,7 @@ Train:
             - length
   loader:
     shuffle: true
-    batch_size_per_card: 128
+    batch_size_per_card: 96
     drop_last: true
     num_workers: 12
 
@@ -154,5 +173,5 @@ Eval:
   loader:
     shuffle: false
     drop_last: false
-    batch_size_per_card: 128
+    batch_size_per_card: 96
     num_workers: 8

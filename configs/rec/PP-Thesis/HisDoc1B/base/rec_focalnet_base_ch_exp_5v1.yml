@@ -1,6 +1,6 @@
 Global:
   use_gpu: true
-  epoch_num: 20
+  epoch_num: 15
   log_smooth_window: 20
   print_batch_step: 10
   save_model_dir: ./output/rec_ppv5ss1_focalnet_base_ch_exp_5v1/
@@ -58,9 +58,8 @@ Architecture:
       - 32
       - 640
     out_char_num: 40 # W//4 or W//8 or W/12
-    patch_size: [4, 8]
+    patch_size: [8, 8]
     patch_mode: "linear" # "pope"
-    sub_num: 3 # only when patch_mode is "pope"
     embed_dim: 128
     depths: [3, 6, 3]
     focal_levels: [2, 2, 2]

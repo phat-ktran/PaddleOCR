@@ -646,7 +646,7 @@ class FocalNet(nn.Layer):
         return x
 
     def forward(self, x):
-        x = self.forward_features(x)
+        x = self.forward_features(x) # B, L, C
         if self.last_stage:
             _, L, _ = x.shape
             h = self.HW[0] // self.h_factor ** (self.num_layers - 1)
