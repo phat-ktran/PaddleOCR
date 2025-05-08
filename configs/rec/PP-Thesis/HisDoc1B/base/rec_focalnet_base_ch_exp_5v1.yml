@@ -21,11 +21,11 @@ Global:
   save_res_path: null
   use_amp: true
   distributed: true
-  # wandb:
-  #   project: PP-Thesis-Rec-Exp-5
-  #   entity: trankim147-vnu-hcmus
-  #   name: Experiment-5v1
   use_wandb: true
+  wandb:
+    project: "PP-Thesis-Rec-Exp-5"
+    entity: "trankim147-vnu-hcmus"
+    name: "Experiment-5v1"
   huggingface:
     push_to_hub: false
     hf_token: null
@@ -45,7 +45,7 @@ Optimizer:
   one_dim_param_no_weight_decay: True
   lr:
     name: Cosine
-    learning_rate: 0.00075 # 12gpus 128bs
+    learning_rate: 0.00075 # 12gpus 96bs
     warmup_epoch: 5
 
 Architecture:
@@ -72,7 +72,7 @@ Architecture:
     patch_norm: True
     use_layerscale: False
     layerscale_value: 1e-4
-    use_postln: True
+    use_postln: False
     apply_norm_after: True
     normalize_modulator: True
 
@@ -129,7 +129,7 @@ Train:
     shuffle: true
     batch_size_per_card: 96
     drop_last: true
-    num_workers: 8
+    num_workers: 12
 
 Eval:
   dataset:
@@ -155,4 +155,4 @@ Eval:
     shuffle: false
     drop_last: false
     batch_size_per_card: 96
-    num_workers: 4
+    num_workers: 8
