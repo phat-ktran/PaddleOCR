@@ -43,12 +43,6 @@ Optimizer:
     gamma: 0.95
     step_size: 1
     warmup_epoch: 10
-  # lr:
-  #   name: LinearWarmupCosine
-  #   learning_rate: 0.00075 # 12gpus 96bs
-  #   warmup_epoch: 10 * 1388
-  #   start_lr: 0.0
-  #   min_lr: 0.0000375
 
 Architecture:
   model_type: rec
