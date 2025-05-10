@@ -3,7 +3,7 @@ Global:
   epoch_num: 15
   log_smooth_window: 20
   print_batch_step: 10
-  save_model_dir: ./output/rec_ppv5ss1_focalnet_base_ch_exp_5v2/
+  save_model_dir: ./output/rec_ppv5ss1_focalnet_base_ch_exp_5v3/
   save_epoch_step: 1
   eval_batch_step:
     - 27760
@@ -34,7 +34,7 @@ Global:
 wandb:
   project: "PP-Thesis-Rec-Exp-5"
   entity: "trankim147-vnu-hcmus"
-  name: "Experiment-5"
+  name: "Experiment-5v3"
 
 Optimizer:
   name: AdamW

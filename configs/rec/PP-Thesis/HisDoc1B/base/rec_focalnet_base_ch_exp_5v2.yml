@@ -34,7 +34,7 @@ Global:
 wandb:
   project: "PP-Thesis-Rec-Exp-5"
   entity: "trankim147-vnu-hcmus"
-  name: "Experiment-5"
+  name: "Experiment-5v2"
 
 Optimizer:
   name: AdamW
