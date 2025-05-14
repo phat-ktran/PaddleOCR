@@ -21,7 +21,7 @@ Global:
   save_res_path: null
   use_amp: true
   distributed: true
-  use_wandb: true
+  # use_wandb: true
   huggingface:
     push_to_hub: false
     hf_token: null
@@ -31,10 +31,10 @@ Global:
     run_as_future: true
   d2s_train_image_shape: [3, 32, 640]
 
-wandb:
-  project: "PP-Thesis-Rec-Exp-5"
-  entity: "trankim147-vnu-hcmus"
-  name: "Experiment-5v5"
+# wandb:
+#   project: "PP-Thesis-Rec-Exp-5"
+#   entity: "trankim147-vnu-hcmus"
+#   name: "Experiment-5v5"
 
 Optimizer:
   name: AdamW
