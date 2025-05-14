@@ -233,10 +233,6 @@ class CurriculumLMDBDataSet(Dataset):
             self.lmdb_sets[lno]["indices_per_length"] = indices_per_length
         total_indices_per_length = defaultdict(int)
         for dataset_idx, dataset_info in self.lmdb_sets.items():
-            self.logger.info(
-                f"Dataset {dataset_idx}: Path={dataset_info['dirpath']}, "
-                f"Num Samples={dataset_info['num_samples']}"
-            )
             for length_step in self.length_steps:
                 total_indices_per_length[length_step] += len(dataset_info["indices_per_length"][length_step])
 
