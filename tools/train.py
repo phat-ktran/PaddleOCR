@@ -249,15 +249,17 @@ def test_reader(config, device, logger):
 
     starttime = time.time()
     count = 0
+    epochs = 5
     try:
-        for data in loader():
-            count += 1
-            if count % 1 == 0:
-                batch_time = time.time() - starttime
-                starttime = time.time()
-                logger.info(
-                    "reader: {}, {}, {}".format(count, len(data[0]), batch_time)
-                )
+        for epoch in range(epochs):
+            for data in loader():
+                count += 1
+                if count % 1 == 0:
+                    batch_time = time.time() - starttime
+                    starttime = time.time()
+                    logger.info(
+                        "reader: {}, {}, {}".format(count, len(data[0]), batch_time)
+                    )
     except Exception as e:
         logger.info(e)
     logger.info("finish reader: {}, Success!".format(count))

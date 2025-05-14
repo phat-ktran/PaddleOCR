@@ -754,6 +754,10 @@ def eval(
             sum_images += 1
         # Get final metric，eg. acc or hmean
         metric = eval_class.get_metric()
+        # for key, value in metric.items():
+        #     tensor = paddle.to_tensor(value)
+        #     paddle.distributed.all_reduce(tensor, op=paddle.distributed.ReduceOp.SUM)
+        #     metric[key] = tensor.numpy()[0] / paddle.distributed.get_world_size()
 
     pbar.close()
     model.train()

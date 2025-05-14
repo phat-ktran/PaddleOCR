@@ -291,8 +291,8 @@ class FocalNetBlock(nn.Layer):
 
         # Focal Modulation
         x = x if self.use_postln else self.norm1(x)
-        x = x.view((B, H, W, C))
-        x = self.modulation(x).view((B, H * W, C))
+        x = x.reshape((B, H, W, C))
+        x = self.modulation(x).reshape((B, H * W, C))
         x = x if not self.use_postln else self.norm1(x)
 
         # FFN

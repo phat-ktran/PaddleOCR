@@ -17,6 +17,7 @@ from difflib import SequenceMatcher
 
 import numpy as np
 import string
+import paddle
 from .bleu import compute_bleu_score, compute_edit_distance
 
 
@@ -80,6 +81,82 @@ class RecMetric(object):
         acc = 1.0 * self.correct_num / (self.all_num + self.eps)
         char_acc = 1.0 * self.correct_char_num / (self.all_char_num + self.eps)
         norm_edit_dis = 1 - self.norm_edit_dis / (self.all_num + self.eps)
+        self.reset()
+        return {"acc": acc, "char_acc": char_acc, "norm_edit_dis": norm_edit_dis}
+
+    def reset(self):
+        self.correct_num = 0
+        self.correct_char_num = 0
+        self.all_num = 0
+        self.all_char_num = 0
+        self.norm_edit_dis = 0
+
+
+class DistributedRecMetric(object):
+    def __init__(
+        self, main_indicator="acc", is_filter=False, ignore_space=True, **kwargs
+    ):
+        self.main_indicator = main_indicator
+        self.is_filter = is_filter
+        self.ignore_space = ignore_space
+        self.eps = 1e-5
+        self.reset()
+
+    def _normalize_text(self, text):
+        text = "".join(
+            filter(lambda x: x in (string.digits + string.ascii_letters), text)
+        )
+        return text.lower()
+
+    def __call__(self, pred_label, *args, **kwargs):
+        preds, labels = pred_label
+        correct_num, correct_char_num = 0, 0
+        all_num, all_char_num = 0, 0
+        norm_edit_dis = 0.0
+        for (pred, pred_conf), (target, _) in zip(preds, labels):
+            if self.ignore_space:
+                pred = pred.replace(" ", "")
+                target = target.replace(" ", "")
+            if self.is_filter:
+                pred = self._normalize_text(pred)
+                target = self._normalize_text(target)
+            norm_edit_dis += Levenshtein.normalized_distance(pred, target)
+            if pred == target:
+                correct_num += 1
+            max_len = max(len(target), len(pred))
+            for i in range(max_len):
+                pred_c = pred[i] if len(pred) > i else None
+                target_c = target[i] if len(target) > i else None
+                if pred_c == target_c:
+                    correct_char_num += 1
+            all_char_num += len(target)
+            all_num += 1
+        self.correct_num += correct_num
+        self.correct_char_num += correct_char_num
+        self.all_num += all_num
+        self.all_char_num += all_char_num
+        self.norm_edit_dis += norm_edit_dis
+
+    def gather_metrics(self):
+        # Gather metrics across all processes
+        metrics = {
+            "correct_num": paddle.to_tensor(self.correct_num),
+            "correct_char_num": paddle.to_tensor(self.correct_char_num),
+            "all_num": paddle.to_tensor(self.all_num),
+            "all_char_num": paddle.to_tensor(self.all_char_num),
+            "norm_edit_dis": paddle.to_tensor(self.norm_edit_dis),
+        }
+        for key, tensor in metrics.items():
+            paddle.distributed.all_reduce(tensor, op=paddle.distributed.ReduceOp.SUM)
+            metrics[key] = tensor.numpy()[0]
+        return metrics
+
+    def get_metric(self):
+        # Aggregate metrics
+        metrics = self.gather_metrics()
+        acc = metrics["correct_num"] / (metrics["all_num"] + self.eps)
+        char_acc = metrics["correct_char_num"] / (metrics["all_char_num"] + self.eps)
+        norm_edit_dis = 1 - metrics["norm_edit_dis"] / (metrics["all_num"] + self.eps)
         self.reset()
         return {"acc": acc, "char_acc": char_acc, "norm_edit_dis": norm_edit_dis}
 
@@ -282,7 +359,6 @@ class LaTeXOCRMetric(object):
                 "exp_rate<=3 ": cur_exp_3,
             }
         else:
-
             return {
                 "edit distance": cur_edit_distance,
                 "exp_rate": cur_exp_rate,

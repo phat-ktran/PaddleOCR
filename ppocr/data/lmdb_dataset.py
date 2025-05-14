@@ -23,6 +23,7 @@ import cv2
 import string
 import pickle
 from PIL import Image
+from collections import defaultdict
 
 from .imaug import transform, create_operators
 
@@ -38,7 +39,6 @@ class LMDBDataSet(Dataset):
         data_dir = dataset_config["data_dir"]
         self.do_shuffle = loader_config["shuffle"]
         self.seed = seed
-        
         self.lmdb_sets = self.load_hierarchical_lmdb_dataset(data_dir)
         logger.info("Initialize indexs of datasets:%s" % data_dir)
         self.data_idx_order_list = self.dataset_traversal()
@@ -159,6 +159,205 @@ class LMDBDataSet(Dataset):
         return self.data_idx_order_list.shape[0]
 
 
+class CurriculumLMDBDataSet(Dataset):
+    def __init__(self, config, mode, logger, seed=None):
+        super(CurriculumLMDBDataSet, self).__init__()
+        self.current_epoch = 0
+        global_config = config["Global"]
+        dataset_config = config[mode]["dataset"]
+        loader_config = config[mode]["loader"]
+        data_dir = dataset_config["data_dir"]
+        self.logger = logger
+        self.length_steps = dataset_config.get("length_steps", [25, 30, 40])
+        self.stage_epochs = dataset_config.get("stage_epochs", [5, 5, 2])
+        assert len(self.stage_epochs) == len(self.length_steps), (
+            "stage_epochs must match length_steps"
+        )
+        self.do_shuffle = loader_config["shuffle"]
+        self.seed = seed
+
+        self.lmdb_sets = self.load_hierarchical_lmdb_dataset(data_dir)
+        self.logger.info("Initialize indexs of datasets:%s" % data_dir)
+        self._prepare_stages()
+        self.data_idx_order_list = self.dataset_traversal()
+        if self.do_shuffle:
+            np.random.shuffle(self.data_idx_order_list)
+        self.ops = create_operators(dataset_config["transforms"], global_config)
+        self.ext_op_transform_idx = dataset_config.get("ext_op_transform_idx", 1)
+        ratio_list = dataset_config.get("ratio_list", [1.0])
+        self.need_reset = True in [x < 1 for x in ratio_list]
+
+    def load_hierarchical_lmdb_dataset(self, data_dir):
+        lmdb_sets = {}
+        dataset_idx = 0
+        for dirpath, dirnames, filenames in os.walk(data_dir + "/"):
+            if not dirnames:
+                env = lmdb.open(
+                    dirpath,
+                    max_readers=32,
+                    readonly=True,
+                    lock=False,
+                    readahead=False,
+                    meminit=False,
+                )
+                txn = env.begin(write=False)
+                num_samples = int(txn.get("num-samples".encode()))
+                lmdb_sets[dataset_idx] = {
+                    "dirpath": dirpath,
+                    "env": env,
+                    "txn": txn,
+                    "num_samples": num_samples,
+                }
+                dataset_idx += 1
+        return lmdb_sets
+
+    def _identify_stage(self):
+        return np.searchsorted(self.cum_epochs, self.current_epoch, side="right")
+
+    def _prepare_stages(self):
+        self.cum_epochs = np.cumsum(self.stage_epochs)
+        self.stage = -1
+        lmdb_num = len(self.lmdb_sets)
+        for lno in range(lmdb_num):
+            tmp_sample_num = self.lmdb_sets[lno]["num_samples"]
+            indices_per_length = defaultdict(list)
+            for idx in range(1, tmp_sample_num + 1):
+                length = self.get_lmdb_sample_length(self.lmdb_sets[lno]["txn"], idx)
+                if not length:
+                    continue
+                for length_step in self.length_steps:
+                    if length > length_step:
+                        continue
+                    indices_per_length[length_step].append(idx)
+                    break
+            self.lmdb_sets[lno]["indices_per_length"] = indices_per_length
+        total_indices_per_length = defaultdict(int)
+        for dataset_idx, dataset_info in self.lmdb_sets.items():
+            self.logger.info(
+                f"Dataset {dataset_idx}: Path={dataset_info['dirpath']}, "
+                f"Num Samples={dataset_info['num_samples']}"
+            )
+            for length_step in self.length_steps:
+                total_indices_per_length[length_step] += len(dataset_info["indices_per_length"][length_step])
+
+        self.logger.info(
+            f"Total sum of indices_per_length across all datasets: "
+            f"{', '.join([f'{length_step}: {total_indices_per_length[length_step]}' for length_step in self.length_steps])}"
+        )
+
+    def get_lmdb_sample_length(self, txn, index):
+        label_key = "label-%09d".encode() % index
+        label = txn.get(label_key)
+        if label is None:
+            return None
+        return len(label.decode("utf-8"))
+
+    def dataset_traversal(self):
+        lmdb_num = len(self.lmdb_sets)
+        stage = self._identify_stage()
+        if stage == self.stage:
+            return self.data_idx_order_list
+        self.logger.info(f"Transitioning to stage {stage} at epoch {self.current_epoch}")
+        self.stage = stage
+        max_len_idx = min(self.stage, len(self.length_steps) - 1)
+        total_sample_num = 0
+        for lno in range(lmdb_num):
+            for idx in range(0, max_len_idx + 1):
+                total_sample_num += len(
+                    self.lmdb_sets[lno]["indices_per_length"][self.length_steps[idx]]
+                )
+        self.logger.info(f"Total samples at epoch {self.current_epoch}: {total_sample_num}")
+        data_idx_order_list = np.zeros((total_sample_num, 2))
+        beg_idx = 0
+        for lno in range(lmdb_num):
+            tmp_sample_num = 0
+            tmp_indices = []
+            for idx in range(0, max_len_idx + 1):
+                tmp_sample_num += len(
+                    self.lmdb_sets[lno]["indices_per_length"][self.length_steps[idx]]
+                )
+                tmp_indices.extend(
+                    self.lmdb_sets[lno]["indices_per_length"][self.length_steps[idx]]
+                )
+            end_idx = beg_idx + tmp_sample_num
+            data_idx_order_list[beg_idx:end_idx, 0] = lno
+            data_idx_order_list[beg_idx:end_idx, 1] = tmp_indices
+            beg_idx = beg_idx + tmp_sample_num
+        return data_idx_order_list
+
+    def set_epoch(self, epoch):
+        self.current_epoch = epoch
+        self.data_idx_order_list = self.dataset_traversal()
+
+    def get_img_data(self, value):
+        """get_img_data"""
+        if not value:
+            return None
+        imgdata = np.frombuffer(value, dtype="uint8")
+        if imgdata is None:
+            return None
+        imgori = cv2.imdecode(imgdata, 1)
+        if imgori is None:
+            return None
+        return imgori
+
+    def get_ext_data(self):
+        ext_data_num = 0
+        for op in self.ops:
+            if hasattr(op, "ext_data_num"):
+                ext_data_num = getattr(op, "ext_data_num")
+                break
+        load_data_ops = self.ops[: self.ext_op_transform_idx]
+        ext_data = []
+
+        while len(ext_data) < ext_data_num:
+            lmdb_idx, file_idx = self.data_idx_order_list[np.random.randint(len(self))]
+            lmdb_idx = int(lmdb_idx)
+            file_idx = int(file_idx)
+            sample_info = self.get_lmdb_sample_info(
+                self.lmdb_sets[lmdb_idx]["txn"], file_idx
+            )
+            if sample_info is None:
+                continue
+            img, label = sample_info
+            data = {"image": img, "label": label}
+            data = transform(data, load_data_ops)
+            if data is None:
+                continue
+            ext_data.append(data)
+        return ext_data
+
+    def get_lmdb_sample_info(self, txn, index):
+        label_key = "label-%09d".encode() % index
+        label = txn.get(label_key)
+        if label is None:
+            return None
+        label = label.decode("utf-8")
+        img_key = "image-%09d".encode() % index
+        imgbuf = txn.get(img_key)
+        return imgbuf, label
+
+    def __getitem__(self, idx):
+        lmdb_idx, file_idx = self.data_idx_order_list[idx]
+        lmdb_idx = int(lmdb_idx)
+        file_idx = int(file_idx)
+        sample_info = self.get_lmdb_sample_info(
+            self.lmdb_sets[lmdb_idx]["txn"], file_idx
+        )
+        if sample_info is None:
+            return self.__getitem__(np.random.randint(self.__len__()))
+        img, label = sample_info
+        data = {"image": img, "label": label}
+        data["ext_data"] = self.get_ext_data()
+        outs = transform(data, self.ops)
+        if outs is None:
+            return self.__getitem__(np.random.randint(self.__len__()))
+        return outs
+
+    def __len__(self):
+        return self.data_idx_order_list.shape[0]
+
+
 class MultiScaleLMDBDataSet(LMDBDataSet):
     def __init__(self, config, mode, logger, seed=None):
         super(MultiScaleLMDBDataSet, self).__init__(config, mode, logger, seed)
@@ -201,7 +400,7 @@ class MultiScaleLMDBDataSet(LMDBDataSet):
                     img = cv2.imdecode(imgdata, 1)
                     h, w = img.shape[:2]
                     ratio = float(w) / float(h)
-                    
+
                     del img_buf, img
                     gc.collect()
 

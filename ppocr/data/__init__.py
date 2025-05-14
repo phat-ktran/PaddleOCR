@@ -34,10 +34,17 @@ import paddle.distributed as dist
 
 from ppocr.data.imaug import transform, create_operators
 from ppocr.data.simple_dataset import SimpleDataSet, MultiScaleDataSet
-from ppocr.data.lmdb_dataset import LMDBDataSet, MultiScaleLMDBDataSet, LMDBDataSetSR, LMDBDataSetTableMaster
+from ppocr.data.lmdb_dataset import (
+    LMDBDataSet,
+    MultiScaleLMDBDataSet,
+    CurriculumLMDBDataSet,
+    LMDBDataSetSR,
+    LMDBDataSetTableMaster,
+)
 from ppocr.data.pgnet_dataset import PGDataSet
 from ppocr.data.pubtab_dataset import PubTabDataSet
 from ppocr.data.multi_scale_sampler import MultiScaleSampler
+from ppocr.data.curriculum_sampler import DistributedCurriculumLengthSampler
 from ppocr.data.latexocr_dataset import LaTeXOCRDataSet
 
 # for PaddleX dataset_type
@@ -55,7 +62,7 @@ def term_mp(sig_num, frame):
     """kill all child processes"""
     pid = os.getpid()
     pgid = os.getpgid(os.getpid())
-    print("main proc {} exit, kill process group " "{}".format(pid, pgid))
+    print("main proc {} exit, kill process group {}".format(pid, pgid))
     os.killpg(pgid, signal.SIGKILL)
 
 
@@ -86,6 +93,7 @@ def build_dataloader(config, mode, device, logger, seed=None):
     support_dict = [
         "SimpleDataSet",
         "LMDBDataSet",
+        "CurriculumLMDBDataSet",
         "PGDataSet",
         "PubTabDataSet",
         "LMDBDataSetSR",
@@ -121,7 +129,15 @@ def build_dataloader(config, mode, device, logger, seed=None):
         if "sampler" in config[mode]:
             config_sampler = config[mode]["sampler"]
             sampler_name = config_sampler.pop("name")
-            batch_sampler = eval(sampler_name)(dataset, **config_sampler)
+            if sampler_name == "DistributedCurriculumLengthSampler":
+                batch_sampler = DistributedCurriculumLengthSampler(
+                    dataset=dataset,
+                    batch_size=batch_size,
+                    shuffle=shuffle,
+                    drop_last=drop_last,
+                )
+            else:
+                batch_sampler = eval(sampler_name)(dataset, **config_sampler)
         else:
             batch_sampler = DistributedBatchSampler(
                 dataset=dataset,
@@ -130,10 +146,22 @@ def build_dataloader(config, mode, device, logger, seed=None):
                 drop_last=drop_last,
             )
     else:
-        # Distribute data to single card
-        batch_sampler = BatchSampler(
-            dataset=dataset, batch_size=batch_size, shuffle=shuffle, drop_last=drop_last
-        )
+        distributed_eval = config[mode].get("distributed", False)
+        if distributed_eval:
+            batch_sampler = DistributedBatchSampler(
+                dataset=dataset,
+                batch_size=batch_size,
+                shuffle=shuffle,
+                drop_last=drop_last,
+            )
+        else:
+            # Distribute data to single card
+            batch_sampler = BatchSampler(
+                dataset=dataset,
+                batch_size=batch_size,
+                shuffle=shuffle,
+                drop_last=drop_last,
+            )
 
     if "collate_fn" in loader_config:
         from . import collate_fn
