@@ -95,7 +95,7 @@ Architecture:
             name: svtr
             dims: 512
             depth: 2
-            hidden_dims: 256
+            hidden_dims: 512
             kernel_size: [1, 3]
             use_guide: True
           Head:
