@@ -149,9 +149,9 @@ class DistributedRecMetric(object):
         if paddle.distributed.get_world_size() > 1:  # Check if distributed mode is enabled
             for key, tensor in metrics.items():
                 paddle.distributed.all_reduce(tensor, op=paddle.distributed.ReduceOp.SUM)
-                metrics[key] = tensor.numpy()[0]
+                metrics[key] = tensor.numpy().item()  # Use .item() to extract scalar value
         else:
-            metrics = {key: tensor.numpy()[0] for key, tensor in metrics.items()}
+            metrics = {key: tensor.numpy().item() for key, tensor in metrics.items()}  # Use .item() here as well
         return metrics
 
     def get_metric(self):
