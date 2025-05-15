@@ -96,7 +96,7 @@ Train:
     name: CurriculumLMDBDataSet
     data_dir: ./train_data/rec/train/
     length_steps: [25, 30, 40]
-    stage_epochs: [5, 3, 2] # Train with text boxes of length 25 for the first 5 epoches, then increase to 30 the next 3, ...
+    stage_epochs: [5, 3] # Train with text boxes of length 25 for the first 5 epoches, then increase to 30 the next 3, ...
     ext_op_transform_idx: 1
     transforms:
       - DecodeImage:

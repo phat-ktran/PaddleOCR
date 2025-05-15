@@ -169,9 +169,9 @@ class CurriculumLMDBDataSet(Dataset):
         data_dir = dataset_config["data_dir"]
         self.logger = logger
         self.length_steps = dataset_config.get("length_steps", [25, 30, 40])
-        self.stage_epochs = dataset_config.get("stage_epochs", [5, 5, 2])
-        assert len(self.stage_epochs) == len(self.length_steps), (
-            "stage_epochs must match length_steps"
+        self.stage_epochs = dataset_config.get("stage_epochs", [5, 5])
+        assert len(self.stage_epochs) - 1 == len(self.length_steps), (
+            "stage_epochs must less than length_steps by 1 unit"
         )
         self.do_shuffle = loader_config["shuffle"]
         self.seed = seed
