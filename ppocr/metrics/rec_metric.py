@@ -146,9 +146,12 @@ class DistributedRecMetric(object):
             "all_char_num": paddle.to_tensor(self.all_char_num),
             "norm_edit_dis": paddle.to_tensor(self.norm_edit_dis),
         }
-        for key, tensor in metrics.items():
-            paddle.distributed.all_reduce(tensor, op=paddle.distributed.ReduceOp.SUM)
-            metrics[key] = tensor.numpy()[0]
+        if paddle.distributed.get_world_size() > 1:  # Check if distributed mode is enabled
+            for key, tensor in metrics.items():
+                paddle.distributed.all_reduce(tensor, op=paddle.distributed.ReduceOp.SUM)
+                metrics[key] = tensor.numpy()[0]
+        else:
+            metrics = {key: tensor.numpy()[0] for key, tensor in metrics.items()}
         return metrics
 
     def get_metric(self):

@@ -34,6 +34,8 @@ import tools.program as program
 
 def main():
     global_config = config["Global"]
+    if config["Global"].get("distributed", False):
+        paddle.distributed.init_parallel_env()
     # build dataloader
     set_signal_handlers()
     valid_dataloader = build_dataloader(config, "Eval", device, logger)
@@ -64,9 +66,9 @@ def main():
                         "out_channels_list"
                     ] = out_channels_list
                 else:
-                    config["Architecture"]["Models"][key]["Head"][
-                        "out_channels"
-                    ] = char_num
+                    config["Architecture"]["Models"][key]["Head"]["out_channels"] = (
+                        char_num
+                    )
         elif config["Architecture"]["Head"]["name"] == "MultiHead":  # for multi head
             out_channels_list = {}
             if config["PostProcess"]["name"] == "SARLabelDecode":
