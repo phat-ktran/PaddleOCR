@@ -7,8 +7,8 @@ Global:
   save_model_dir: ./output/rec_ppv8ss1_svtrv2_base_ch_exp_4v1/
   save_epoch_step: 1
   eval_batch_step:
-    - 13880
-    - 1388
+    - 15408
+    - 1926
   cal_metric_during_train: true
   pretrained_model:
   checkpoints:
@@ -94,7 +94,7 @@ Architecture:
           Head:
             fc_decay: 0.00001
       - NRTRHead:
-          nrtr_dim: 512
+          nrtr_dim: 256
           max_text_length: *max_text_length
           num_decoder_layers: 2
 
