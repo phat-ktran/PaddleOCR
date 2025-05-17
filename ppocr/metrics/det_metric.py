@@ -15,8 +15,9 @@
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
+import paddle
 
-__all__ = ["DetMetric", "DetFCEMetric"]
+__all__ = ["DetMetric", "DistributedDetMetric", "DetFCEMetric", "DistributedDetFCEMetric"]
 
 from .eval_det_iou import DetectionIoUEvaluator
 
@@ -66,6 +67,123 @@ class DetMetric(object):
         metrics = self.evaluator.combine_results(self.results)
         self.reset()
         return metrics
+
+    def reset(self):
+        self.results = []  # clear results
+
+
+class DistributedDetMetric(object):
+    def __init__(self, main_indicator="hmean", **kwargs):
+        self.evaluator = DetectionIoUEvaluator()
+        self.main_indicator = main_indicator
+        self.reset()
+
+    def __call__(self, preds, batch, **kwargs):
+        """
+        batch: a list produced by dataloaders.
+            image: np.ndarray  of shape (N, C, H, W).
+            ratio_list: np.ndarray  of shape(N,2)
+            polygons: np.ndarray  of shape (N, K, 4, 2), the polygons of objective regions.
+            ignore_tags: np.ndarray  of shape (N, K), indicates whether a region is ignorable or not.
+        preds: a list of dict produced by post process
+             points: np.ndarray of shape (N, K, 4, 2), the polygons of objective regions.
+        """
+        gt_polyons_batch = batch[2]
+        ignore_tags_batch = batch[3]
+        for pred, gt_polyons, ignore_tags in zip(
+            preds, gt_polyons_batch, ignore_tags_batch
+        ):
+            # prepare gt
+            gt_info_list = [
+                {"points": gt_polyon, "text": "", "ignore": ignore_tag}
+                for gt_polyon, ignore_tag in zip(gt_polyons, ignore_tags)
+            ]
+            # prepare det
+            det_info_list = [
+                {"points": det_polyon, "text": ""} for det_polyon in pred["points"]
+            ]
+            result = self.evaluator.evaluate_image(gt_info_list, det_info_list)
+            self.results.append(result)
+
+    def gather_metrics(self):
+        """
+        Gather results from all distributed processes
+        """
+        # Convert local results to tensor for all_reduce operation
+        # We need to handle dictionary of lists, so we'll convert them to tensor representations
+
+        # Count total number of results
+        num_results = paddle.to_tensor(len(self.results), dtype="int64")
+
+        # For the metrics, we'll gather their counts for computing later
+        true_positives = paddle.to_tensor(
+            sum(
+                r["true_positive_num"] for r in self.results if "true_positive_num" in r
+            ),
+            dtype="int64",
+        )
+        false_positives = paddle.to_tensor(
+            sum(
+                r["false_positive_num"]
+                for r in self.results
+                if "false_positive_num" in r
+            ),
+            dtype="int64",
+        )
+        false_negatives = paddle.to_tensor(
+            sum(
+                r["false_negative_num"]
+                for r in self.results
+                if "false_negative_num" in r
+            ),
+            dtype="int64",
+        )
+
+        metrics = {
+            "num_results": num_results,
+            "true_positives": true_positives,
+            "false_positives": false_positives,
+            "false_negatives": false_negatives,
+        }
+
+        # Perform all_reduce operation if in distributed mode
+        if paddle.distributed.get_world_size() > 1:
+            for key, tensor in metrics.items():
+                paddle.distributed.all_reduce(
+                    tensor, op=paddle.distributed.ReduceOp.SUM
+                )
+                metrics[key] = tensor.numpy().item()  # Extract scalar value
+        else:
+            metrics = {key: tensor.numpy().item() for key, tensor in metrics.items()}
+
+        return metrics
+
+    def get_metric(self):
+        """
+        return metrics {
+                 'precision': 0,
+                 'recall': 0,
+                 'hmean': 0
+            }
+        """
+        # If we're in distributed mode, we need to gather results first
+        metrics = self.gather_metrics()
+
+        # Calculate precision, recall, and hmean from aggregated counts
+        tp = metrics["true_positives"]
+        fp = metrics["false_positives"]
+        fn = metrics["false_negatives"]
+
+        precision = tp / (tp + fp) if tp + fp > 0 else 0.0
+        recall = tp / (tp + fn) if tp + fn > 0 else 0.0
+        hmean = 0.0
+        if precision + recall > 0:
+            hmean = 2.0 * precision * recall / (precision + recall)
+
+        result_metrics = {"precision": precision, "recall": recall, "hmean": hmean}
+
+        self.reset()
+        return result_metrics
 
     def reset(self):
         self.results = []  # clear results
@@ -138,6 +256,156 @@ class DetFCEMetric(object):
             hmean = max(hmean, metric["hmean"])
         metrics["hmean"] = hmean
 
+        self.reset()
+        return metrics
+
+    def reset(self):
+        self.results = {
+            0.3: [],
+            0.4: [],
+            0.5: [],
+            0.6: [],
+            0.7: [],
+            0.8: [],
+            0.9: [],
+        }  # clear results
+
+
+class DistributedDetFCEMetric(object):
+    def __init__(self, main_indicator="hmean", **kwargs):
+        self.evaluator = DetectionIoUEvaluator()
+        self.main_indicator = main_indicator
+        self.reset()
+
+    def __call__(self, preds, batch, **kwargs):
+        """
+        batch: a list produced by dataloaders.
+            image: np.ndarray  of shape (N, C, H, W).
+            ratio_list: np.ndarray  of shape(N,2)
+            polygons: np.ndarray  of shape (N, K, 4, 2), the polygons of objective regions.
+            ignore_tags: np.ndarray  of shape (N, K), indicates whether a region is ignorable or not.
+        preds: a list of dict produced by post process
+             points: np.ndarray of shape (N, K, 4, 2), the polygons of objective regions.
+        """
+        gt_polyons_batch = batch[2]
+        ignore_tags_batch = batch[3]
+
+        for pred, gt_polyons, ignore_tags in zip(
+            preds, gt_polyons_batch, ignore_tags_batch
+        ):
+            # prepare gt
+            gt_info_list = [
+                {"points": gt_polyon, "text": "", "ignore": ignore_tag}
+                for gt_polyon, ignore_tag in zip(gt_polyons, ignore_tags)
+            ]
+            # prepare det
+            det_info_list = [
+                {"points": det_polyon, "text": "", "score": score}
+                for det_polyon, score in zip(pred["points"], pred["scores"])
+            ]
+
+            for score_thr in self.results.keys():
+                det_info_list_thr = [
+                    det_info
+                    for det_info in det_info_list
+                    if det_info["score"] >= score_thr
+                ]
+                result = self.evaluator.evaluate_image(gt_info_list, det_info_list_thr)
+                self.results[score_thr].append(result)
+
+    def gather_metrics(self):
+        """
+        Gather results from all distributed processes for each threshold
+        """
+        # Initialize metrics dictionary to store aggregated results for each threshold
+        metrics_by_threshold = {}
+
+        for score_thr in self.results.keys():
+            # Count metrics for this threshold
+            true_positives = paddle.to_tensor(
+                sum(
+                    r["true_positive_num"]
+                    for r in self.results[score_thr]
+                    if "true_positive_num" in r
+                ),
+                dtype="int64",
+            )
+            false_positives = paddle.to_tensor(
+                sum(
+                    r["false_positive_num"]
+                    for r in self.results[score_thr]
+                    if "false_positive_num" in r
+                ),
+                dtype="int64",
+            )
+            false_negatives = paddle.to_tensor(
+                sum(
+                    r["false_negative_num"]
+                    for r in self.results[score_thr]
+                    if "false_negative_num" in r
+                ),
+                dtype="int64",
+            )
+
+            metrics = {
+                "true_positives": true_positives,
+                "false_positives": false_positives,
+                "false_negatives": false_negatives,
+            }
+
+            # Perform all_reduce operation if in distributed mode
+            if paddle.distributed.get_world_size() > 1:
+                for key, tensor in metrics.items():
+                    paddle.distributed.all_reduce(
+                        tensor, op=paddle.distributed.ReduceOp.SUM
+                    )
+                    metrics[key] = tensor.numpy().item()  # Extract scalar value
+            else:
+                metrics = {
+                    key: tensor.numpy().item() for key, tensor in metrics.items()
+                }
+
+            metrics_by_threshold[score_thr] = metrics
+
+        return metrics_by_threshold
+
+    def get_metric(self):
+        """
+        return metrics {'hmean':0,
+            'thr 0.3':'precision: 0 recall: 0 hmean: 0',
+            'thr 0.4':'precision: 0 recall: 0 hmean: 0',
+            'thr 0.5':'precision: 0 recall: 0 hmean: 0',
+            'thr 0.6':'precision: 0 recall: 0 hmean: 0',
+            'thr 0.7':'precision: 0 recall: 0 hmean: 0',
+            'thr 0.8':'precision: 0 recall: 0 hmean: 0',
+            'thr 0.9':'precision: 0 recall: 0 hmean: 0',
+            }
+        """
+        # Gather metrics across all distributed processes
+        metrics_by_threshold = self.gather_metrics()
+
+        # Calculate final metrics
+        metrics = {}
+        hmean = 0
+
+        for score_thr, agg_metrics in metrics_by_threshold.items():
+            tp = agg_metrics["true_positives"]
+            fp = agg_metrics["false_positives"]
+            fn = agg_metrics["false_negatives"]
+
+            precision = tp / (tp + fp) if tp + fp > 0 else 0.0
+            recall = tp / (tp + fn) if tp + fn > 0 else 0.0
+            current_hmean = 0.0
+            if precision + recall > 0:
+                current_hmean = 2.0 * precision * recall / (precision + recall)
+
+            metric_str = "precision:{:.5f} recall:{:.5f} hmean:{:.5f}".format(
+                precision, recall, current_hmean
+            )
+            metrics["thr {}".format(score_thr)] = metric_str
+            hmean = max(hmean, current_hmean)
+
+        metrics["hmean"] = hmean
         self.reset()
         return metrics
 
