@@ -4,7 +4,7 @@ Global:
   epoch_num: 20
   log_smooth_window: 20
   print_batch_step: 10
-  save_model_dir: ./output/rec_ppv5ss1_svtrv2_base_ch_exp_4/
+  save_model_dir: ./output/rec_ppv8ss1_svtrv2_base_ch_exp_4/
   save_epoch_step: 1
   eval_batch_step:
     - 13880
