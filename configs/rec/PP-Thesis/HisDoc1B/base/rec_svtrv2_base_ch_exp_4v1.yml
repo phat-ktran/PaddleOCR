@@ -47,7 +47,7 @@ Optimizer:
   one_dim_param_no_weight_decay: True
   lr:
     name: Cosine
-    learning_rate: 0.00075 # 12gpus 96bs
+    learning_rate: 0.000625 # 12gpus 80bs
     warmup_epoch: 5
 
 Architecture:
@@ -134,7 +134,7 @@ Train:
   sampler:
     name: MultiScaleSampler
     scales: [[640, 32], [640, 48], [640, 64]]
-    first_bs: &bs 96
+    first_bs: &bs 80
     fix_bs: false
     divided_factor: [8, 16] # w, h
     is_training: True
@@ -167,5 +167,5 @@ Eval:
   loader:
     shuffle: false
     drop_last: false
-    batch_size_per_card: 1024
+    batch_size_per_card: 768
     num_workers: 8
