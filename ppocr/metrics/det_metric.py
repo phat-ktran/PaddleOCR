@@ -114,38 +114,48 @@ class DistributedDetMetric(object):
         """
         Gather results from all distributed processes and combine them.
         """
-        # Aggregate sums for each metric
-        total_gtCare = paddle.to_tensor(0, dtype="int64")
-        total_detCare = paddle.to_tensor(0, dtype="int64")
-        total_detMatched = paddle.to_tensor(0, dtype="int64")
+        # # Aggregate sums for each metric
+        # total_gtCare = paddle.to_tensor(0, dtype="int64")
+        # total_detCare = paddle.to_tensor(0, dtype="int64")
+        # total_detMatched = paddle.to_tensor(0, dtype="int64")
 
-        for res in self.results:
-            total_gtCare += res.get("gtCare", 0)
-            total_detCare += res.get("detCare", 0)
-            total_detMatched += res.get("detMatched", 0)
+        # for res in self.results:
+        #     total_gtCare += res.get("gtCare", 0)
+        #     total_detCare += res.get("detCare", 0)
+        #     total_detMatched += res.get("detMatched", 0)
 
-        if paddle.distributed.get_world_size() > 1:
-            paddle.distributed.all_reduce(
-                total_gtCare, op=paddle.distributed.ReduceOp.SUM
-            )
-            paddle.distributed.all_reduce(
-                total_detCare, op=paddle.distributed.ReduceOp.SUM
-            )
-            paddle.distributed.all_reduce(
-                total_detMatched, op=paddle.distributed.ReduceOp.SUM
-            )
+        # if paddle.distributed.get_world_size() > 1:
+        #     paddle.distributed.all_reduce(
+        #         total_gtCare, op=paddle.distributed.ReduceOp.SUM
+        #     )
+        #     paddle.distributed.all_reduce(
+        #         total_detCare, op=paddle.distributed.ReduceOp.SUM
+        #     )
+        #     paddle.distributed.all_reduce(
+        #         total_detMatched, op=paddle.distributed.ReduceOp.SUM
+        #     )
 
-        # Reconstruct the reduced results as a single-item list for combine_results
-        reduced_results = [
-            {
-                "gtCare": total_gtCare.numpy().item(),
-                "detCare": total_detCare.numpy().item(),
-                "detMatched": total_detMatched.numpy().item(),
-            }
-        ]
+        # # Reconstruct the reduced results as a single-item list for combine_results
+        # reduced_results = [
+        #     {
+        #         "gtCare": total_gtCare.numpy().item(),
+        #         "detCare": total_detCare.numpy().item(),
+        #         "detMatched": total_detMatched.numpy().item(),
+        #     }
+        # ]
 
-        # Combine results using the evaluator
-        metrics = self.evaluator.combine_results(reduced_results)
+        # # Combine results using the evaluator
+        # metrics = self.evaluator.combine_results(reduced_results)
+        # return metrics
+        # 1) Gather self.results lists from all ranks into a single Python list:
+        all_results = []
+        paddle.distributed.all_gather_object(self.results, all_results)
+
+        # all_results is now a list of lists; flatten it:
+        flat_results = [item for sublist in all_results for item in sublist]
+
+        # 2) Combine exactly once:
+        metrics = self.evaluator.combine_results(flat_results)
         return metrics
 
     def get_metric(self):
