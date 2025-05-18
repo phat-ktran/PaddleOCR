@@ -149,7 +149,7 @@ class DistributedDetMetric(object):
         # return metrics
         # 1) Gather self.results lists from all ranks into a single Python list:
         all_results = []
-        paddle.distributed.all_gather_object(self.results, all_results)
+        paddle.distributed.all_gather_object(all_results, self.results)
 
         # all_results is now a list of lists; flatten it:
         flat_results = [item for sublist in all_results for item in sublist]
