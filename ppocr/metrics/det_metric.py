@@ -17,7 +17,12 @@ from __future__ import division
 from __future__ import print_function
 import paddle
 
-__all__ = ["DetMetric", "DistributedDetMetric", "DetFCEMetric", "DistributedDetFCEMetric"]
+__all__ = [
+    "DetMetric",
+    "DistributedDetMetric",
+    "DetFCEMetric",
+    "DistributedDetFCEMetric",
+]
 
 from .eval_det_iou import DetectionIoUEvaluator
 
@@ -107,55 +112,40 @@ class DistributedDetMetric(object):
 
     def gather_metrics(self):
         """
-        Gather results from all distributed processes
+        Gather results from all distributed processes and combine them.
         """
-        # Convert local results to tensor for all_reduce operation
-        # We need to handle dictionary of lists, so we'll convert them to tensor representations
+        # Aggregate sums for each metric
+        total_gtCare = paddle.to_tensor(0, dtype="int64")
+        total_detCare = paddle.to_tensor(0, dtype="int64")
+        total_detMatched = paddle.to_tensor(0, dtype="int64")
 
-        # Count total number of results
-        num_results = paddle.to_tensor(len(self.results), dtype="int64")
+        for res in self.results:
+            total_gtCare += res.get("gtCare", 0)
+            total_detCare += res.get("detCare", 0)
+            total_detMatched += res.get("detMatched", 0)
 
-        # For the metrics, we'll gather their counts for computing later
-        true_positives = paddle.to_tensor(
-            sum(
-                r["true_positive_num"] for r in self.results if "true_positive_num" in r
-            ),
-            dtype="int64",
-        )
-        false_positives = paddle.to_tensor(
-            sum(
-                r["false_positive_num"]
-                for r in self.results
-                if "false_positive_num" in r
-            ),
-            dtype="int64",
-        )
-        false_negatives = paddle.to_tensor(
-            sum(
-                r["false_negative_num"]
-                for r in self.results
-                if "false_negative_num" in r
-            ),
-            dtype="int64",
-        )
-
-        metrics = {
-            "num_results": num_results,
-            "true_positives": true_positives,
-            "false_positives": false_positives,
-            "false_negatives": false_negatives,
-        }
-
-        # Perform all_reduce operation if in distributed mode
         if paddle.distributed.get_world_size() > 1:
-            for key, tensor in metrics.items():
-                paddle.distributed.all_reduce(
-                    tensor, op=paddle.distributed.ReduceOp.SUM
-                )
-                metrics[key] = tensor.numpy().item()  # Extract scalar value
-        else:
-            metrics = {key: tensor.numpy().item() for key, tensor in metrics.items()}
+            paddle.distributed.all_reduce(
+                total_gtCare, op=paddle.distributed.ReduceOp.SUM
+            )
+            paddle.distributed.all_reduce(
+                total_detCare, op=paddle.distributed.ReduceOp.SUM
+            )
+            paddle.distributed.all_reduce(
+                total_detMatched, op=paddle.distributed.ReduceOp.SUM
+            )
 
+        # Reconstruct the reduced results as a single-item list for combine_results
+        reduced_results = [
+            {
+                "gtCare": total_gtCare.numpy().item(),
+                "detCare": total_detCare.numpy().item(),
+                "detMatched": total_detMatched.numpy().item(),
+            }
+        ]
+
+        # Combine results using the evaluator
+        metrics = self.evaluator.combine_results(reduced_results)
         return metrics
 
     def get_metric(self):
