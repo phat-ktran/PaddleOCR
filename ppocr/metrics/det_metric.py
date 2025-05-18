@@ -159,21 +159,9 @@ class DistributedDetMetric(object):
         # If we're in distributed mode, we need to gather results first
         metrics = self.gather_metrics()
 
-        # Calculate precision, recall, and hmean from aggregated counts
-        tp = metrics["true_positives"]
-        fp = metrics["false_positives"]
-        fn = metrics["false_negatives"]
-
-        precision = tp / (tp + fp) if tp + fp > 0 else 0.0
-        recall = tp / (tp + fn) if tp + fn > 0 else 0.0
-        hmean = 0.0
-        if precision + recall > 0:
-            hmean = 2.0 * precision * recall / (precision + recall)
-
-        result_metrics = {"precision": precision, "recall": recall, "hmean": hmean}
-
         self.reset()
-        return result_metrics
+
+        return metrics
 
     def reset(self):
         self.results = []  # clear results
