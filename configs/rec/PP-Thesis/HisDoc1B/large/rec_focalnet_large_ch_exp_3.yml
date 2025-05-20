@@ -1,9 +1,9 @@
 Global:
   use_gpu: true
-  epoch_num: 15
+  epoch_num: 200
   log_smooth_window: 20
   print_batch_step: 10
-  save_model_dir: ./output/rec_ppv5ss1_focalnet_base_ch_exp_5v5/
+  save_model_dir: ./output/rec_ppv7_focalnet_base_ch_exp_3/
   save_epoch_step: 1
   eval_batch_step:
     - 27760
@@ -14,13 +14,14 @@ Global:
   save_inference_dir: null
   use_visualdl: false
   infer_img: null
-  character_dict_path: ppocr/utils/dict/PP-Thesis/hisdoc1b_ss1.txt
+  character_dict_path: ppocr/utils/dict/PP-Thesis/hisdoc1b.txt
   max_text_length: 40
   infer_mode: false
   use_space_char: false
   save_res_path: null
   use_amp: true
   distributed: true
+  use_wandb: true
   huggingface:
     push_to_hub: false
     hf_token: null
@@ -29,6 +30,11 @@ Global:
     ignore_patterns: "**/wandb/*"
     run_as_future: true
   d2s_train_image_shape: [3, 32, 640]
+
+wandb:
+  project: "PP-Thesis-Rec-Pretraining"
+  entity: "trankim147-vnu-hcmus"
+  name: "FocalNet-L-Exp-3"
 
 Optimizer:
   name: AdamW
@@ -56,8 +62,8 @@ Architecture:
     patch_size: [4, 8]
     patch_mode: "pope" # "pope"
     sub_num: 3 # only when patch_mode is "pope"
-    embed_dim: 128
-    depths: [3, 6, 3]
+    embed_dim: 192
+    depths: [6, 6, 9]
     focal_levels: [2, 2, 2]
     focal_windows: [3, 3, 3]
     subsample_stride: [2, 1]
@@ -96,7 +102,7 @@ Train:
     name: CurriculumLMDBDataSet
     data_dir: ./train_data/rec/train/
     length_steps: [25, 30, 40]
-    stage_epochs: [5, 3] # Train with text boxes of length 25 for the first 5 epoches, then increase to 30 the next 3, ...
+    stage_epochs: [2, 2]
     ext_op_transform_idx: 1
     transforms:
       - DecodeImage:
@@ -126,7 +132,7 @@ Train:
     name: DistributedCurriculumLengthSampler
   loader:
     shuffle: true
-    batch_size_per_card: 96
+    batch_size_per_card: 48
     drop_last: true
     num_workers: 12
 
@@ -154,5 +160,5 @@ Eval:
   loader:
     shuffle: false
     drop_last: false
-    batch_size_per_card: 768
-    num_workers: 12
+    batch_size_per_card: 512
+    num_workers: 8

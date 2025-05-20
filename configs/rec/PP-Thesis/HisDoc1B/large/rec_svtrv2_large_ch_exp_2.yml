@@ -4,7 +4,7 @@ Global:
   epoch_num: 200
   log_smooth_window: 20
   print_batch_step: 10
-  save_model_dir: ./output/rec_ppv5ss1_svtrv2_large_ch_exp_6/
+  save_model_dir: ./output/rec_ppv8_svtrv2_large_ch_exp_2/
   save_epoch_step: 1
   # evaluation is run every 2000 iterations after the 0th iteration
   eval_batch_step:
@@ -16,7 +16,7 @@ Global:
   save_inference_dir:
   use_visualdl: false
   infer_img: null
-  character_dict_path: ppocr/utils/dict/PP-Thesis/hisdoc1b_ss1.txt
+  character_dict_path: ppocr/utils/dict/PP-Thesis/hisdoc1b.txt
   max_text_length: &max_text_length 40
   infer_mode: false
   use_space_char: false
@@ -25,7 +25,7 @@ Global:
   use_wandb: true
   distributed: true
   huggingface:
-    push_to_hub: true
+    push_to_hub: false
     hf_token: null
     repo_id: "PPThes/checkpoints"
     repo_type: "dataset"
@@ -33,9 +33,9 @@ Global:
     run_as_future: true
 
 wandb:
-  project: "PP-Thesis-Rec-Exp-6"
+  project: "PP-Thesis-Rec-Pretraining"
   entity: "trankim147-vnu-hcmus"
-  name: "Experiment-6"
+  name: "SVTRv2-L-Exp-2"
 
 Optimizer:
   name: AdamW
@@ -123,7 +123,7 @@ PostProcess:
   name: CTCLabelDecode
 
 Metric:
-  name: RecMetric
+  name: DistributedRecMetric
   main_indicator: char_acc
 
 Train:
@@ -156,7 +156,7 @@ Train:
   sampler:
     name: MultiScaleSampler
     scales: [[640, 32], [640, 48], [640, 64]]
-    first_bs: &bs 96
+    first_bs: &bs 80
     fix_bs: false
     divided_factor: [8, 16] # w, h
     is_training: True
@@ -165,7 +165,9 @@ Train:
     batch_size_per_card: *bs
     drop_last: true
     num_workers: 12
+
 Eval:
+  distributed: true
   dataset:
     name: LMDBDataSet
     data_dir: ./train_data/rec/val
@@ -187,5 +189,5 @@ Eval:
   loader:
     shuffle: false
     drop_last: false
-    batch_size_per_card: 128
+    batch_size_per_card: 512
     num_workers: 8
