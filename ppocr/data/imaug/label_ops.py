@@ -551,7 +551,7 @@ class AttnLabelEncode(BaseRecLabelEncode):
         elif beg_or_end == "end":
             idx = np.array(self.dict[self.end_str])
         else:
-            assert False, "Unsupport type %s in get_beg_end_flag_idx" % beg_or_end
+            assert False, "Unsupported type %s in get_beg_end_flag_idx" % beg_or_end
         return idx
 
 
@@ -609,7 +609,7 @@ class RFLLabelEncode(BaseRecLabelEncode):
         elif beg_or_end == "end":
             idx = np.array(self.dict[self.end_str])
         else:
-            assert False, "Unsupport type %s in get_beg_end_flag_idx" % beg_or_end
+            assert False, "Unsupported type %s in get_beg_end_flag_idx" % beg_or_end
         return idx
 
 
@@ -689,7 +689,7 @@ class SRNLabelEncode(BaseRecLabelEncode):
         elif beg_or_end == "end":
             idx = np.array(self.dict[self.end_str])
         else:
-            assert False, "Unsupport type %s in get_beg_end_flag_idx" % beg_or_end
+            assert False, "Unsupported type %s in get_beg_end_flag_idx" % beg_or_end
         return idx
 
 

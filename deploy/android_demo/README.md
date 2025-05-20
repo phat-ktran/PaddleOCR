@@ -28,7 +28,7 @@
 ## 3. 快速使用
 
 ### 3.1 环境准备
-1. 在本地环境安装好 Android Studio 工具，详细安装方法请见[Android Stuido 官网](https://developer.android.com/studio)。
+1. 在本地环境安装好 Android Studio 工具，详细安装方法请见[Android Studio 官网](https://developer.android.com/studio)。
 2. 准备一部 Android 手机，并开启 USB 调试模式。开启方法: `手机设置 -> 查找开发者选项 -> 打开开发者选项和 USB 调试模式`
 
 **注意**：如果您的 Android Studio 尚未配置 NDK ，请根据 Android Studio 用户指南中的[安装及配置 NDK 和 CMake ](https://developer.android.com/studio/projects/install-ndk)内容，预先配置好 NDK 。您可以选择最新的 NDK 版本，或者使用 Paddle Lite 预测库版本一样的 NDK
@@ -66,7 +66,7 @@ app主页中有四个按钮，一个下拉列表和一个菜单按钮，他们�
 
 <img src="https://paddleocr.bj.bcebos.com/PP-OCRv2/lite/imgs/run_det_cls_rec.jpg" width="400">
 
-模型运行完成后，模型和运行状态显示区`STATUS`字段显示了当前模型的运行状态，这里显示为`run model successed`表明模型运行成功。
+模型运行完成后，模型和运行状态显示区`STATUS`字段显示了当前模型的运行状态，这里显示为`run model succeeded`表明模型运行成功。
 
 模型的运行结果显示在运行结果显示区，显示格式为
 ```text

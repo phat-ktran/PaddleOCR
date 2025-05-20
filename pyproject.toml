@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "paddleocr"
 # After each version release, the version number needs to be incremented
 dynamic = ["version"]
-description = "Awesome OCR toolkits based on PaddlePaddle(8.6M ultra-lightweight pre-trained model, support training and deployment among server, mobile, embedded and IoT devices)"
+description = "Awesome OCR toolkit based on PaddlePaddle"
 authors = [
     {name = "PaddlePaddle", email = "Paddle-better@baidu.com"},
 ]
@@ -39,30 +39,9 @@ classifiers = [
     "Topic :: Utilities",
 ]
 dependencies = [
-    "shapely",
-    "scikit-image",
-    "pyclipper",
-    "lmdb",
-    "tqdm",
-    "numpy",
-    "rapidfuzz",
-    "opencv-python",
-    "opencv-contrib-python",
-    "cython",
-    "pillow",
-    "pyyaml",
-    "python-docx",
-    "beautifulsoup4",
-    "fonttools>=4.24.0",
-    "fire>=0.3.0",
-    "requests",
-    "albumentations",
-    # to be compatible with albumentations
-    "albucore",
-    "ruff>=0.11.0",
-    "setuptools>=75.3.2",
-    "packaging>=24.2",
-    "huggingface-hub>=0.30.2",
+    "paddlex[ocr,ie,multimodal]==3.0.0",
+    "PyYAML>=6",
+    "typing-extensions>=4.12",
 ]
 
 [project.urls]
@@ -72,12 +51,18 @@ repository = "https://github.com/PaddlePaddle/PaddleOCR.git"
 issues = "https://github.com/PaddlePaddle/PaddleOCR/issues"
 
 [project.scripts]
-paddleocr = "paddleocr.paddleocr:main"
+paddleocr = "paddleocr.__main__:console_entry"
 
-[tool.setuptools]
-packages = ["paddleocr"]
-package-dir = { "paddleocr" = "" }
-include-package-data = true
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["paddleocr", "paddleocr.*"]
+namespaces = false
 
 [tool.setuptools_scm]
 version_scheme = 'release-branch-semver'
+
+[tool.pytest.ini_options]
+markers = [
+    "resource_intensive: mark a test as resource intensive"
+]
+addopts = "-m 'not resource_intensive'"
