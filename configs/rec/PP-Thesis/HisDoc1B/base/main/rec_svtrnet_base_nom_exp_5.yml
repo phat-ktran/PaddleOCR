@@ -1,15 +1,16 @@
 Global:
   use_gpu: true
-  epoch_num: 20
+  epoch_num: 200
   log_smooth_window: 20
   print_batch_step: 10
-  save_model_dir: ./output/rec_ppv5ss1_svtrnet_base_ch_exp_2/
+  save_model_dir: ./output/rec_CLCLabNom_svtrnet_base_nom_exp_5/
   save_epoch_step: 1
   eval_batch_step:
     - 13880
     - 2000
   cal_metric_during_train: true
   pretrained_model: ./output/rec_ppv5ss1_svtrnet_base_ch_exp_3/iter_epoch_12
+  handle_mismatch: true
   checkpoints: null
   save_inference_dir: null
   use_visualdl: false
@@ -39,7 +40,7 @@ Optimizer:
   one_dim_param_no_weight_decay: True
   lr:
     name: Cosine
-    learning_rate: 0.0006875 # 12gpus 96bs
+    learning_rate: 0.00075 # 12gpus 96bs
     warmup_epoch: 5
 
 Architecture:
@@ -143,9 +144,9 @@ Train:
             - length
   loader:
     shuffle: true
-    batch_size_per_card: 80
+    batch_size_per_card: 96
     drop_last: true
-    num_workers: 10
+    num_workers: 12
 
 Eval:
   distributed: true
