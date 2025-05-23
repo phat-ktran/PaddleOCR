@@ -1,20 +1,21 @@
 Global:
   use_gpu: true
-  epoch_num: 15
+  epoch_num: 20
   log_smooth_window: 20
   print_batch_step: 10
-  save_model_dir: ./output/rec_ppv5ss1_focalnet_base_ch_exp_3.1/
+  save_model_dir: ./output/rec_CLCLabNom_focalnet_base_nom_exp_4/
   save_epoch_step: 1
   eval_batch_step:
     - 27760
     - 2000
   cal_metric_during_train: true
-  pretrained_model: ./output/rec_ppv5ss1_focalnet_base_ch_exp_3/iter_epoch_12
+  pretrained_model: ./output/rec_ppv5ss1_focalnet_base_ch_exp_5/iter_epoch_12
+  handle_mismatch: true
   checkpoints: null
   save_inference_dir: null
   use_visualdl: false
   infer_img: null
-  character_dict_path: ppocr/utils/dict/PP-Thesis/all.txt
+  character_dict_path: ppocr/utils/dict/PP-Thesis/hisdoc1b_ss1_nom.txt
   max_text_length: 40
   infer_mode: false
   use_space_char: false
@@ -32,9 +33,9 @@ Global:
   d2s_train_image_shape: [3, 32, 640]
 
 wandb:
-  project: "PP-Thesis-Rec-Main-Exp-3"
+  project: "PP-Thesis-Rec-Main-Exp-4"
   entity: "trankim147-vnu-hcmus"
-  name: "Experiment-3.1"
+  name: "Experiment-4"
 
 Optimizer:
   name: AdamW
@@ -46,7 +47,7 @@ Optimizer:
   one_dim_param_no_weight_decay: True
   lr:
     name: Cosine
-    learning_rate: 0.00075 # 12gpus 128bs
+    learning_rate: 0.00012 # 12gpus 128bs
     warmup_epoch: 5
 
 Architecture:
@@ -99,8 +100,10 @@ Metric:
 
 Train:
   dataset:
-    name: LMDBDataSet
-    data_dir: ./train_data/rec/train/
+    name: SimpleDataSet
+    data_dir: ./train_data/
+    label_file_list:
+    - ./train_data/train.txt
     ext_op_transform_idx: 1
     transforms:
       - DecodeImage:
@@ -128,14 +131,16 @@ Train:
             - length
   loader:
     shuffle: true
-    batch_size_per_card: 96
+    batch_size_per_card: 48
     drop_last: true
     num_workers: 12
 
 Eval:
   dataset:
-    name: LMDBDataSet
-    data_dir: ./train_data/rec/val/
+    name: SimpleDataSet
+    data_dir: ./train_data/
+    label_file_list:
+    - ./train_data/val.txt
     transforms:
       - DecodeImage:
           img_mode: BGR
@@ -155,5 +160,5 @@ Eval:
   loader:
     shuffle: false
     drop_last: false
-    batch_size_per_card: 128
+    batch_size_per_card: 384
     num_workers: 8
