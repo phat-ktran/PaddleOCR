@@ -1530,6 +1530,9 @@ def PPHGNetV2_B4(pretrained=False, use_ssld=False, det=False, text_rec=False, **
         "stage3": [512, 192, 1024, 3, True, True, 5, 6, [2, 1]],
         "stage4": [1024, 384, 2048, 1, True, True, 5, 6, [2, 1]],
     }
+    
+    if kwargs.get("stage_config_rec") and text_rec:
+        stage_config_rec = kwargs.get("stage_config_rec")
 
     stage_config_det = {
         # in_channels, mid_channels, out_channels, num_blocks, is_downsample, light_block, kernel_size, layer_num
