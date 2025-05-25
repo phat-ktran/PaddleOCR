@@ -201,6 +201,11 @@ def load_pretrained_params(model, path, handle_mismatch=False):
             if list(state_dict[k1].shape) == list(params[k1].shape):
                 new_state_dict[k1] = params[k1]
             elif handle_mismatch:
+                logger.warning(
+                    "The shape of pretrained param {} {} does not match model param {} {}. Will try to copy overlapping dims.".format(
+                        k1, params[k1].shape, k1, state_dict[k1].shape
+                    )
+                )
                 overlap_dim = min(params[k1].shape[-1], state_dict[k1].shape[-1])
                 new_state_dict[k1] = state_dict[k1].clone()
                 if params[k1].ndim > 1:
