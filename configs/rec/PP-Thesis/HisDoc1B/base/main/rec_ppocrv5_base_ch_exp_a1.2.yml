@@ -1,11 +1,11 @@
 Global:
-  model_name: rec_ppocrv5_base_ch_exp_a1.1 # To use static model for inference.
+  model_name: rec_ppocrv5_base_ch_exp_a1.2 # To use static model for inference.
   debug: false
   use_gpu: true
   epoch_num: 5
   log_smooth_window: 20
   print_batch_step: 10
-  save_model_dir: ./output/rec_ppocrv5_base_ch_exp_a1.1
+  save_model_dir: ./output/rec_ppocrv5_base_ch_exp_a1.2
   save_epoch_step: 1
   eval_batch_step: [27000000, 2000]
   cal_metric_during_train: true
@@ -35,7 +35,7 @@ Global:
 wandb:
   project: "Rec-Pretraining"
   entity: "trankim147-vnu-hcmus"
-  name: "A1.1"
+  name: "A1.2"
 
 Optimizer:
   name: Adam
@@ -68,15 +68,15 @@ Architecture:
       - CTCHead:
           Neck:
             name: svtr
-            dims: 160
+            dims: 120
             depth: 2
-            hidden_dims: 160
+            hidden_dims: 120
             kernel_size: [1, 3]
             use_guide: True
           Head:
             fc_decay: 0.00001
       - NRTRHead:
-          nrtr_dim: 512
+          nrtr_dim: 384
           max_text_length: *max_text_length
 
 Loss:

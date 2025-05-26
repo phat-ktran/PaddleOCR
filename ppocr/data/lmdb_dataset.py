@@ -29,7 +29,7 @@ from .imaug import transform, create_operators
 
 
 class LMDBDataSet(Dataset):
-    def __init__(self, config, mode, logger, seed=None):
+    def __init__(self, config, mode, logger, seed=None, read_masks=False):
         super(LMDBDataSet, self).__init__()
 
         global_config = config["Global"]
@@ -39,6 +39,7 @@ class LMDBDataSet(Dataset):
         data_dir = dataset_config["data_dir"]
         self.do_shuffle = loader_config["shuffle"]
         self.seed = seed
+        self.read_masks = read_masks
         self.lmdb_sets = self.load_hierarchical_lmdb_dataset(data_dir)
         logger.info("Initialize indexes of datasets:%s" % data_dir)
         self.data_idx_order_list = self.dataset_traversal()
@@ -102,6 +103,14 @@ class LMDBDataSet(Dataset):
             return None
         return imgori
 
+    def get_masks_data(self, txn, index):
+        meta_key = "meta-%09d".encode() % index
+        meta = txn.get(meta_key)
+        if not meta:
+            return None
+        masks = meta[4]
+        return masks
+
     def get_ext_data(self):
         ext_data_num = 0
         for op in self.ops:
@@ -122,6 +131,8 @@ class LMDBDataSet(Dataset):
                 continue
             img, label = sample_info
             data = {"image": img, "label": label}
+            if self.read_masks:
+                data["masks"] = self.get_masks_data(self.lmdb_sets[lmdb_idx]["txn"], file_idx)
             data = transform(data, load_data_ops)
             if data is None:
                 continue
@@ -150,6 +161,10 @@ class LMDBDataSet(Dataset):
         img, label = sample_info
         data = {"image": img, "label": label}
         data["ext_data"] = self.get_ext_data()
+        if self.read_masks:
+            data["masks"] = self.get_masks_data(
+                self.lmdb_sets[lmdb_idx]["txn"], file_idx
+            )
         outs = transform(data, self.ops)
         if outs is None:
             return self.__getitem__(np.random.randint(self.__len__()))
@@ -160,7 +175,7 @@ class LMDBDataSet(Dataset):
 
 
 class CurriculumLMDBDataSet(Dataset):
-    def __init__(self, config, mode, logger, seed=None):
+    def __init__(self, config, mode, logger, seed=None, read_masks=False):
         super(CurriculumLMDBDataSet, self).__init__()
         self.current_epoch = 0
         global_config = config["Global"]
@@ -175,7 +190,7 @@ class CurriculumLMDBDataSet(Dataset):
         )
         self.do_shuffle = loader_config["shuffle"]
         self.seed = seed
-
+        self.read_masks = read_masks
         self.lmdb_sets = self.load_hierarchical_lmdb_dataset(data_dir)
         self.logger.info("Initialize indexs of datasets:%s" % data_dir)
         self._prepare_stages()
@@ -234,7 +249,9 @@ class CurriculumLMDBDataSet(Dataset):
         total_indices_per_length = defaultdict(int)
         for dataset_idx, dataset_info in self.lmdb_sets.items():
             for length_step in self.length_steps:
-                total_indices_per_length[length_step] += len(dataset_info["indices_per_length"][length_step])
+                total_indices_per_length[length_step] += len(
+                    dataset_info["indices_per_length"][length_step]
+                )
 
         self.logger.info(
             f"Total sum of indices_per_length across all datasets: "
@@ -253,7 +270,9 @@ class CurriculumLMDBDataSet(Dataset):
         stage = self._identify_stage()
         if stage == self.stage:
             return self.data_idx_order_list
-        self.logger.info(f"Transitioning to stage {stage} at epoch {self.current_epoch}")
+        self.logger.info(
+            f"Transitioning to stage {stage} at epoch {self.current_epoch}"
+        )
         self.stage = stage
         max_len_idx = min(self.stage, len(self.length_steps) - 1)
         total_sample_num = 0
@@ -262,7 +281,9 @@ class CurriculumLMDBDataSet(Dataset):
                 total_sample_num += len(
                     self.lmdb_sets[lno]["indices_per_length"][self.length_steps[idx]]
                 )
-        self.logger.info(f"Total samples at epoch {self.current_epoch}: {total_sample_num}")
+        self.logger.info(
+            f"Total samples at epoch {self.current_epoch}: {total_sample_num}"
+        )
         data_idx_order_list = np.zeros((total_sample_num, 2))
         beg_idx = 0
         for lno in range(lmdb_num):
@@ -297,6 +318,14 @@ class CurriculumLMDBDataSet(Dataset):
             return None
         return imgori
 
+    def get_masks_data(self, txn, index):
+        meta_key = "meta-%09d".encode() % index
+        meta = txn.get(meta_key)
+        if not meta:
+            return None
+        masks = meta[4]
+        return masks
+
     def get_ext_data(self):
         ext_data_num = 0
         for op in self.ops:
@@ -317,6 +346,8 @@ class CurriculumLMDBDataSet(Dataset):
                 continue
             img, label = sample_info
             data = {"image": img, "label": label}
+            if self.read_masks:
+                data["masks"] = self.get_masks_data(self.lmdb_sets[lmdb_idx]["txn"], file_idx)
             data = transform(data, load_data_ops)
             if data is None:
                 continue
@@ -345,6 +376,8 @@ class CurriculumLMDBDataSet(Dataset):
         img, label = sample_info
         data = {"image": img, "label": label}
         data["ext_data"] = self.get_ext_data()
+        if self.read_masks:
+            data["masks"] = self.get_masks_data(self.lmdb_sets[lmdb_idx]["txn"], file_idx)
         outs = transform(data, self.ops)
         if outs is None:
             return self.__getitem__(np.random.randint(self.__len__()))
@@ -355,8 +388,8 @@ class CurriculumLMDBDataSet(Dataset):
 
 
 class MultiScaleLMDBDataSet(LMDBDataSet):
-    def __init__(self, config, mode, logger, seed=None):
-        super(MultiScaleLMDBDataSet, self).__init__(config, mode, logger, seed)
+    def __init__(self, config, mode, logger, seed=None, read_masks=False):
+        super(MultiScaleLMDBDataSet, self).__init__(config, mode, logger, seed, read_masks)
         self.logger = logger
 
         # Get dataset config
@@ -490,6 +523,9 @@ class MultiScaleLMDBDataSet(LMDBDataSet):
 
             # Get external data if needed
             data["ext_data"] = self.get_ext_data()
+            
+            if self.read_masks:
+                data["masks"] = self.get_masks_data(self.lmdb_sets[lmdb_idx]["txn"], file_idx)
 
             # Apply transformations except the last one
             outs = transform(data, self.ops[:-1])
