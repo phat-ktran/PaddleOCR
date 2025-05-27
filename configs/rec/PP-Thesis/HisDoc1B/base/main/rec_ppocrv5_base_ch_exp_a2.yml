@@ -7,7 +7,7 @@ Global:
   print_batch_step: 10
   save_model_dir: ./output/rec_ppocrv5_base_ch_exp_a2
   save_epoch_step: 1
-  eval_batch_step: [27000000, 2000]
+  eval_batch_step: [0, 2000]
   cal_metric_during_train: true
   calc_epoch_interval: 1
   pretrained_model: https://paddle-model-ecology.bj.bcebos.com/paddlex/official_pretrained_model/PP-OCRv5_server_rec_pretrained.pdparams
@@ -43,8 +43,8 @@ Optimizer:
   beta2: 0.999
   lr:
     name: Cosine
-    learning_rate: 0.00075
-    warmup_epoch: 1
+    learning_rate: 0.001
+    warmup_epoch: 0.7
   regularizer:
     name: L2
     factor: 3.0e-05
@@ -65,9 +65,9 @@ Architecture:
   Neck:
     name: SequenceEncoder
     encoder_type: svtr
-    dims: 120
+    dims: 160
     depth: 2
-    hidden_dims: 120
+    hidden_dims: 160
     kernel_size: [1, 3]
   Head:
     name: CTCHead
@@ -109,7 +109,7 @@ Train:
 
   loader:
     shuffle: true
-    batch_size_per_card: 96
+    batch_size_per_card: 128
     drop_last: true
     num_workers: 12
 
@@ -136,5 +136,5 @@ Eval:
   loader:
     shuffle: false
     drop_last: false
-    batch_size_per_card: 512
+    batch_size_per_card: 384
     num_workers: 8
