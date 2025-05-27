@@ -99,8 +99,13 @@ Train:
             - 640
             - 3
       - RecAug:
-      - MultiLabelEncode:
-          gtc_encode: NRTRLabelEncode
+      - CTCLabelEncode: null
+      - SVTRRecResizeImg:
+          image_shape:
+            - 3
+            - 32
+            - 640
+          padding: true
       - KeepKeys:
           keep_keys:
             - image
@@ -122,17 +127,18 @@ Eval:
       - DecodeImage:
           img_mode: BGR
           channel_first: false
-      - MultiLabelEncode:
-          gtc_encode: NRTRLabelEncode
-      - RecResizeImg:
-          image_shape: [3, 32, 640]
+      - CTCLabelEncode: null
+      - SVTRRecResizeImg:
+          image_shape:
+            - 3
+            - 32
+            - 640
+          padding: true
       - KeepKeys:
           keep_keys:
             - image
-            - label_ctc
-            - label_gtc
+            - label
             - length
-            - valid_ratio
   loader:
     shuffle: false
     drop_last: false
