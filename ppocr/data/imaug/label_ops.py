@@ -164,38 +164,6 @@ class BaseRecLabelEncode(object):
         return text_list
 
 
-class BaseRecLabelEncodeWithUnkToken(BaseRecLabelEncode):
-    def __init__(
-        self,
-        max_text_length,
-        character_dict_path=None,
-        use_space_char=False,
-        lower=False,
-    ):
-        super(BaseRecLabelEncodeWithUnkToken, self).__init__(
-            max_text_length, character_dict_path, use_space_char, lower
-        )
-
-    def add_special_char(self, dict_character):
-        dict_character = ["unk"] + dict_character
-        return dict_character
-
-    def encode(self, text):
-        if len(text) == 0 or len(text) > self.max_text_len:
-            return None
-        if self.lower:
-            text = text.lower()
-        text_list = []
-        for char in text:
-            if char not in self.dict:
-                text_list.append(self.dict["unk"])
-            else:
-                text_list.append(self.dict[char])
-        if len(text_list) == 0:
-            return None
-        return text_list
-
-
 class CTCLabelEncode(BaseRecLabelEncode):
     """Convert between text-label and text-index"""
 
@@ -226,16 +194,12 @@ class CTCLabelEncode(BaseRecLabelEncode):
         return dict_character
 
 
-class CTCRecLabelEncodeWithUnkToken(BaseRecLabelEncodeWithUnkToken):
+class CTCLabelEncodeWithUnkToken(BaseRecLabelEncode):
     def __init__(
-        self,
-        max_text_length,
-        character_dict_path=None,
-        use_space_char=False,
-        lower=False,
+        self, max_text_length, character_dict_path=None, use_space_char=False, **kwargs
     ):
-        super(CTCRecLabelEncodeWithUnkToken, self).__init__(
-            max_text_length, character_dict_path, use_space_char, lower
+        super(CTCLabelEncodeWithUnkToken, self).__init__(
+            max_text_length, character_dict_path, use_space_char
         )
 
     def __call__(self, data):
@@ -245,8 +209,10 @@ class CTCRecLabelEncodeWithUnkToken(BaseRecLabelEncodeWithUnkToken):
             return None
         data["length"] = np.array(len(text))
         text = text + [0] * (self.max_text_len - len(text))
+        mask = data["mask"]
+        for idx in mask:
+            text[idx] = self.dict["unk"]
         data["label"] = np.array(text)
-
         label = [0] * len(self.character)
         for x in text:
             label[x] += 1
@@ -254,8 +220,7 @@ class CTCRecLabelEncodeWithUnkToken(BaseRecLabelEncodeWithUnkToken):
         return data
 
     def add_special_char(self, dict_character):
-        dict_character = super().add_special_char(dict_character)
-        dict_character = ["blank"] + dict_character
+        dict_character = ["blank"] + dict_character + ["unk"]
         return dict_character
 
 

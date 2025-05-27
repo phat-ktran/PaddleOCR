@@ -90,7 +90,7 @@ class BaseRecLabelDecode(object):
         word_list = []
         word_col_list = []
         state_list = []
-        valid_col = np.where(selection == True)[0]
+        valid_col = np.where(selection is True)[0]
 
         for c_i, char in enumerate(text):
             if "\u4e00" <= char <= "\u9fff":
@@ -112,7 +112,7 @@ class BaseRecLabelDecode(object):
             ):  # grouping word with '-', such as 'state-of-the-art'
                 c_state = "en&num"
 
-            if state == None:
+            if state is None:
                 state = c_state
 
             if state != c_state:
@@ -224,6 +224,16 @@ class CTCLabelDecode(BaseRecLabelDecode):
     def add_special_char(self, dict_character):
         dict_character = ["blank"] + dict_character
         return dict_character
+
+
+class CTCLabelDecodeWithUnk(CTCLabelDecode):
+    def __init__(self, character_dict_path=None, use_space_char=False, **kwargs):
+        super(CTCLabelDecodeWithUnk, self).__init__(
+            character_dict_path, use_space_char, **kwargs
+        )
+
+    def add_special_char(self, dict_character):
+        return super().add_special_char(dict_character) + ["unk"]
 
 
 class DistillationCTCLabelDecode(CTCLabelDecode):
@@ -985,7 +995,9 @@ class NomNaTransformerLabelDecode(BaseRecLabelDecode):
     """Convert between text-label and text-index"""
 
     def __init__(self, character_dict_path=None, use_space_char=False, **kwargs):
-        super(NomNaTransformerLabelDecode, self).__init__(character_dict_path, use_space_char)
+        super(NomNaTransformerLabelDecode, self).__init__(
+            character_dict_path, use_space_char
+        )
 
     def __call__(self, preds, label=None, *args, **kwargs):
         if len(preds) == 2:
@@ -1329,7 +1341,6 @@ class LaTeXOCRDecode(object):
 
 
 class UniMERNetDecode(object):
-
     SPECIAL_TOKENS_ATTRIBUTES = [
         "bos_token",
         "eos_token",
@@ -1443,7 +1454,6 @@ class UniMERNetDecode(object):
 
     @property
     def all_special_tokens(self):
-
         all_toks = [str(s) for s in self.all_special_tokens_extended]
         return all_toks
 
