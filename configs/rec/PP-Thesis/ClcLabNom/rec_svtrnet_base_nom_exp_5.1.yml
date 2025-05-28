@@ -112,6 +112,7 @@ Loss:
   loss_config_list:
     - CTCLoss:
     - GuidanceLoss:
+        mappings_path: ppocr/utils/context/candidate_mappings.json 
 
 PostProcess:
   name: CTCLabelDecode
