@@ -22,7 +22,7 @@ from paddle import nn
 from .rec_ctc_loss import CTCLoss
 from .rec_sar_loss import SARLoss
 from .rec_nrtr_loss import NRTRLoss
-
+from .rec_guidance_loss import GuidanceLoss
 
 class MultiLoss(nn.Layer):
     def __init__(self, **kwargs):
