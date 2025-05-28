@@ -138,7 +138,7 @@ Train:
             - 640
             - 3
       - RecAug: null
-      - CTCLabelEncodeWithUnk: null
+      - CTCLabelEncode: null
       - SVTRRecResizeImg:
           image_shape:
             - 3
@@ -168,7 +168,7 @@ Eval:
       - DecodeImage:
           img_mode: BGR
           channel_first: false
-      - CTCLabelEncodeWithUnk: null
+      - CTCLabelEncode: null
       - SVTRRecResizeImg:
           image_shape:
             - 3
