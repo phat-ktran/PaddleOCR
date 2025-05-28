@@ -14,7 +14,7 @@ Global:
   save_inference_dir: null
   use_visualdl: false
   infer_img: null
-  character_dict_path: ppocr/utils/dict/PP-Thesis/hisdoc1b_ss1_nom.txt
+  character_dict_path: ppocr/utils/dict/PP-Thesis/hisdoc1b_ss1_nomnaocr.txt
   max_text_length: 40
   infer_mode: false
   use_space_char: false
