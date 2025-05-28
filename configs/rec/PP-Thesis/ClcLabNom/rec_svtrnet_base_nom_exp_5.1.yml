@@ -122,7 +122,7 @@ Metric:
 
 Train:
   dataset:
-    name: LMDBDataset
+    name: LMDBDataSet
     read_mask: true
     data_dir: ./train_data/rec/train/
     ext_op_transform_idx: 1
