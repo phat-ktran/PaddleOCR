@@ -42,7 +42,7 @@ class GuidanceLoss(nn.Layer):
             return json.load(f)
 
     def _create_target_distributions_batch(
-        self, translations: List[str], masks: List[List[int]], vocab_size: int
+        self, translations, masks, vocab_size
     ) -> paddle.Tensor:
         all_target_dists = []
 
@@ -121,9 +121,7 @@ class GuidanceLoss(nn.Layer):
         N, B, vocab_size = predicts.shape
 
         # Extract batch components
-        batch[1].astype("int32")
-        batch[2].astype("int64")
-        label_masks = batch[3].astype("int64")
+        label_masks = [mask.astype("int64") for mask in batch[3]]
         label_translations = batch[4]
 
         # Convert masks to list format for easier processing
@@ -144,7 +142,7 @@ class GuidanceLoss(nn.Layer):
         target_dists = self._create_target_distributions_batch(
             label_translations, masks_list, vocab_size
         )
-
+        
         # Batch extract predictions
         pred_subsets = self._extract_predictions_batch(predicts, masks_list)
 
@@ -162,3 +160,87 @@ class GuidanceLoss(nn.Layer):
             loss = loss / valid_samples
 
         return {"loss": loss}
+
+
+def test_guidance_loss():
+    """Test the GuidanceLoss class functionality."""
+    import os
+
+    mappings_path = "ppocr/utils/context/candidate_mappings.json"
+    vocab_path = "ppocr/utils/dict/PP-Thesis/hisdoc1b_ss1_nomnaocr.txt"
+    # Read vocabulary from file
+    vocab = []
+    if os.path.exists(vocab_path):
+        with open(vocab_path, "r", encoding="utf-8") as f:
+            vocab = [line.strip() for line in f.readlines()]
+
+    try:
+        # Initialize the loss
+        loss_fn = GuidanceLoss(mappings_path)
+
+        # Test parameters
+        batch_size = 2
+        seq_len = 4
+        vocab_size = len(vocab)
+
+        # Create mock predictions (B, N, vocab_size)
+        predicts = paddle.randn([batch_size, seq_len, vocab_size])
+
+        # Create mock batch data
+        labels = paddle.to_tensor([[0, 1, 2, 3], [4, 5, 6, 7]], dtype="int64")  # [B, N]
+        lengths = paddle.to_tensor([4, 4], dtype="int32")  # [B]
+        label_indices = paddle.to_tensor([[0, 1], [0, 1]], dtype="int64")  # [B, 2]
+        label_masks = [
+            paddle.to_tensor([0, 1], dtype="int64"),  # positions to apply guidance
+            paddle.to_tensor([2, 3], dtype="int64"),  # positions to apply guidance
+        ]
+        # Convert label_masks to numpy arrays
+        label_masks = [lm.numpy() if hasattr(lm, "numpy") else lm for lm in label_masks]
+        label_translations = [["kịn", "kinh"], ["kinh", "kịn"]]  # corresponding characters
+
+        batch = [labels, lengths, label_indices, label_masks, label_translations]
+
+        # Test forward pass
+        result = loss_fn(predicts, batch)
+
+        # Verify output
+        assert isinstance(result, dict), "Output should be a dictionary"
+        assert "loss" in result, "Output should contain 'loss' key"
+        assert isinstance(result["loss"], paddle.Tensor), "Loss should be a tensor"
+
+        print("Test 1 passed: Basic forward pass")
+
+        # Test with empty masks
+        empty_masks = [
+            paddle.to_tensor([], dtype="int64"),
+            paddle.to_tensor([], dtype="int64"),
+        ]
+        batch_empty = [labels, lengths, label_indices, empty_masks, label_translations]
+        result_empty = loss_fn(predicts, batch_empty)
+
+        assert result_empty["loss"].numpy()[0] == 0.0, (
+            "Loss should be zero for empty masks"
+        )
+        print("Test 2 passed: Empty masks handling")
+
+        # Test with single sample
+        single_predicts = paddle.randn([1, seq_len, vocab_size])
+        single_batch = [
+            labels[:1],
+            lengths[:1],
+            label_indices[:1],
+            [label_masks[0]],
+            [label_translations[0]],
+        ]
+        result_single = loss_fn(single_predicts, single_batch)
+
+        assert isinstance(result_single["loss"], paddle.Tensor), (
+            "Single sample should work"
+        )
+        print("Test 3 passed: Single sample handling")
+    finally:
+        pass
+
+
+if __name__ == "__main__":
+    test_guidance_loss()

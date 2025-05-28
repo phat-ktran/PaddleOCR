@@ -18,6 +18,7 @@ import io
 import math
 import traceback
 import os
+import paddle
 from paddle.io import Dataset
 import lmdb
 import cv2
@@ -110,6 +111,7 @@ class LMDBDataSet(Dataset):
         if not meta:
             return None
         mask, translation = meta[4], meta[5]
+        mask = [paddle.to_tensor(item, dtype="int64") for item in mask]
         return mask, translation
 
     def get_ext_data(self):
@@ -329,6 +331,7 @@ class CurriculumLMDBDataSet(Dataset):
         if not meta:
             return None
         mask, translation = meta[4], meta[5]
+        mask = [paddle.to_tensor(item, dtype="int64") for item in mask]
         return mask, translation
 
     def get_ext_data(self):
