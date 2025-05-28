@@ -49,9 +49,6 @@ Optimizer:
     name: Cosine
     learning_rate: 0.00115
     warmup_epoch: 2.0
-  regularizer:
-    name: L2
-    factor: 3.0e-05
 
 Architecture:
   model_type: rec
