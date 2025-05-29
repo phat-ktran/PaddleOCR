@@ -31,7 +31,7 @@ from .imaug import transform, create_operators
 
 
 class LMDBDataSet(Dataset):
-    def __init__(self, config, mode, logger, seed=None, read_mask=False):
+    def __init__(self, config, mode, logger, seed=None):
         super(LMDBDataSet, self).__init__()
 
         global_config = config["Global"]
@@ -41,7 +41,7 @@ class LMDBDataSet(Dataset):
         data_dir = dataset_config["data_dir"]
         self.do_shuffle = loader_config["shuffle"]
         self.seed = seed
-        self.read_mask = read_mask
+        self.read_mask = dataset_config.get("read_mask", False)
         self.lmdb_sets = self.load_hierarchical_lmdb_dataset(data_dir)
         logger.info("Initialize indexes of datasets:%s" % data_dir)
         self.data_idx_order_list = self.dataset_traversal()
@@ -109,9 +109,10 @@ class LMDBDataSet(Dataset):
         meta_key = "meta-%09d".encode() % index
         meta = txn.get(meta_key)
         if not meta:
-            return None
+            return [], []
+        meta = pickle.loads(meta)  
         mask, translation = meta[4], meta[5]
-        mask = [paddle.to_tensor(item, dtype="int64") for item in mask]
+        mask = paddle.to_tensor(mask, dtype="int64")
         return mask, translation
 
     def get_ext_data(self):
@@ -136,8 +137,6 @@ class LMDBDataSet(Dataset):
             data = {"image": img, "label": label}
             if self.read_mask:
                 info = self.get_data_info(self.lmdb_sets[lmdb_idx]["txn"], file_idx)
-                if not info:
-                    continue
                 data["mask"], data["translation"] = info[0], info[1]
             data = transform(data, load_data_ops)
             if data is None:
@@ -169,8 +168,6 @@ class LMDBDataSet(Dataset):
         data["ext_data"] = self.get_ext_data()
         if self.read_mask:
             info = self.get_data_info(self.lmdb_sets[lmdb_idx]["txn"], file_idx)
-            if not info:
-                return self.__getitem__(np.random.randint(self.__len__()))
             data["mask"], data["translation"] = info[0], info[1]
         outs = transform(data, self.ops)
         if outs is None:
@@ -182,7 +179,7 @@ class LMDBDataSet(Dataset):
 
 
 class CurriculumLMDBDataSet(Dataset):
-    def __init__(self, config, mode, logger, seed=None, read_mask=False):
+    def __init__(self, config, mode, logger, seed=None):
         super(CurriculumLMDBDataSet, self).__init__()
         self.current_epoch = 0
         global_config = config["Global"]
@@ -197,7 +194,7 @@ class CurriculumLMDBDataSet(Dataset):
         )
         self.do_shuffle = loader_config["shuffle"]
         self.seed = seed
-        self.read_mask = read_mask
+        self.read_mask = dataset_config.get("read_mask", False)
         self.lmdb_sets = self.load_hierarchical_lmdb_dataset(data_dir)
         self.logger.info("Initialize indexs of datasets:%s" % data_dir)
         self._prepare_stages()
@@ -329,7 +326,8 @@ class CurriculumLMDBDataSet(Dataset):
         meta_key = "meta-%09d".encode() % index
         meta = txn.get(meta_key)
         if not meta:
-            return None
+            return [], []
+        meta = pickle.loads(meta)     
         mask, translation = meta[4], meta[5]
         mask = [paddle.to_tensor(item, dtype="int64") for item in mask]
         return mask, translation
@@ -356,8 +354,6 @@ class CurriculumLMDBDataSet(Dataset):
             data = {"image": img, "label": label}
             if self.read_mask:
                 info = self.get_data_info(self.lmdb_sets[lmdb_idx]["txn"], file_idx)
-                if not info:
-                    continue
                 data["mask"], data["translation"] = info[0], info[1]
             data = transform(data, load_data_ops)
             if data is None:
@@ -389,8 +385,6 @@ class CurriculumLMDBDataSet(Dataset):
         data["ext_data"] = self.get_ext_data()
         if self.read_mask:
             info = self.get_data_info(self.lmdb_sets[lmdb_idx]["txn"], file_idx)
-            if not info:
-                return self.__getitem__(np.random.randint(self.__len__()))
             data["mask"], data["translation"] = info[0], info[1]
         outs = transform(data, self.ops)
         if outs is None:
@@ -402,7 +396,7 @@ class CurriculumLMDBDataSet(Dataset):
 
 
 class MultiScaleLMDBDataSet(LMDBDataSet):
-    def __init__(self, config, mode, logger, seed=None, read_mask=False):
+    def __init__(self, config, mode, logger, seed=None):
         super(MultiScaleLMDBDataSet, self).__init__(
             config, mode, logger, seed, read_mask
         )

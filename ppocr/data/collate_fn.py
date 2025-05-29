@@ -56,6 +56,22 @@ class ListCollator(object):
         for idx in to_tensor_idxs:
             data_dict[idx] = paddle.to_tensor(data_dict[idx])
         return list(data_dict.values())
+        
+class FilterListCollator(object):
+    """
+    data batch
+    """
+
+    def __call__(self, batch):
+        # todo：support batch operators
+        data_dict = defaultdict(list)
+        to_tensor_idxs = [0, 1, 2]
+        for sample in batch:
+            for idx, v in enumerate(sample):
+                data_dict[idx].append(v)
+        for idx in to_tensor_idxs:
+            data_dict[idx] = paddle.to_tensor(data_dict[idx])
+        return list(data_dict.values())
 
 
 class SSLRotateCollate(object):

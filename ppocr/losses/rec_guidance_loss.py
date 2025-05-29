@@ -121,8 +121,8 @@ class GuidanceLoss(nn.Layer):
         N, B, vocab_size = predicts.shape
 
         # Extract batch components
-        label_masks = [mask.astype("int64") for mask in batch[3]]
-        label_translations = batch[4]
+        label_masks = [mask.astype("int64") for mask in batch[-2]]
+        label_translations = batch[-1]
 
         # Convert masks to list format for easier processing
         masks_list = [

@@ -154,13 +154,13 @@ Train:
             - mask
             - translation
   loader:
+    collate_fn: FilterListCollator
     shuffle: true
     batch_size_per_card: 96
     drop_last: true
     num_workers: 12
 
 Eval:
-  distributed: true
   dataset:
     name: LMDBDataSet
     read_mask: true
@@ -184,6 +184,7 @@ Eval:
             - mask
             - translation
   loader:
+    collate_fn: FilterListCollator
     shuffle: false
     drop_last: false
     batch_size_per_card: 384

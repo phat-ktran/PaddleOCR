@@ -385,7 +385,7 @@ def train(
             if (
                 cal_metric_during_train and epoch % calc_epoch_interval == 0
             ):  # only rec and cls need
-                batch = [item.numpy() for item in batch]
+                batch = [item.numpy() if isinstance(item, paddle.Tensor) else item for item in batch]
                 if model_type in ["kie", "sr"]:
                     eval_class(preds, batch)
                 elif model_type in ["table"]:
