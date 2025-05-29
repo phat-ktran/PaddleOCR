@@ -9,7 +9,7 @@ Global:
     - 13880
     - 2000
   cal_metric_during_train: true
-  pretrained_model: ./output/rec_CLCLabNom_svtrnet_base_nom_exp_5/best_model/model
+  pretrained_model: ./output/rec_ppv5ss1_svtrnet_base_ch_exp_3/iter_epoch_12
   checkpoints: null
   save_inference_dir: null
   use_visualdl: false
