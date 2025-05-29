@@ -80,8 +80,8 @@ PostProcess:
   name: CTCLabelDecode
 
 Metric:
-  name: DistributedRecMetric
-  main_indicator: acc
+    name: RecMetric
+    main_indicator: acc
 
 Train:
   dataset:
@@ -120,7 +120,6 @@ Train:
     num_workers: 16
 
 Eval:
-  distributed: true
   dataset:
     name: LMDBDataSet
     data_dir: ./train_data/rec/val
