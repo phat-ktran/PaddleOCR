@@ -111,8 +111,10 @@ class LMDBDataSet(Dataset):
         if not meta:
             return [], []
         meta = pickle.loads(meta)  
-        mask, translation = meta[4], meta[5]
-        mask = paddle.to_tensor(mask, dtype="int64")
+        mask_lookup, translation = meta[4], meta[5]
+        mask = paddle.zeros([len(translation)], dtype="int64")
+        for idx in mask_lookup:
+            mask[idx] = 1
         return mask, translation
 
     def get_ext_data(self):
@@ -327,9 +329,11 @@ class CurriculumLMDBDataSet(Dataset):
         meta = txn.get(meta_key)
         if not meta:
             return [], []
-        meta = pickle.loads(meta)     
-        mask, translation = meta[4], meta[5]
-        mask = [paddle.to_tensor(item, dtype="int64") for item in mask]
+        meta = pickle.loads(meta)  
+        mask_lookup, translation = meta[4], meta[5]
+        mask = paddle.zeros([len(translation)], dtype="int64")
+        for idx in mask_lookup:
+            mask[idx] = 1
         return mask, translation
 
     def get_ext_data(self):
