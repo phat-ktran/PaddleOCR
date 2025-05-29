@@ -1541,8 +1541,11 @@ def PPHGNetV2_B4(pretrained=False, use_ssld=False, det=False, text_rec=False, **
         "stage3": [512, 192, 1024, 3, True, True, 5, 6, 2],
         "stage4": [1024, 384, 2048, 1, True, True, 5, 6, 2],
     }
+    
+    if "stem_channels" not in kwargs:
+        kwargs["stem_channels"] = [3,32,48]
+    
     model = PPHGNetV2(
-        stem_channels=[3, 32, 48],
         stage_config=stage_config_det if det else stage_config_rec,
         use_lab=False,
         det=det,
