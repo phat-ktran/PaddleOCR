@@ -44,7 +44,7 @@ Optimizer:
   lr:
     name: LinearWarmupCosine
     learning_rate: 0.001
-    warmup_steps: 4
+    warmup_steps: 5000
   regularizer:
     name: L2
     factor: 3.0e-05
