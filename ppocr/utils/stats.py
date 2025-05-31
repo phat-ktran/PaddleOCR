@@ -50,6 +50,11 @@ class TrainingStats(object):
             if k not in self.smoothed_losses_and_metrics:
                 self.smoothed_losses_and_metrics[k] = SmoothedValue(self.window_size)
             self.smoothed_losses_and_metrics[k].add_value(v)
+            
+    def remove(self, keys):
+        for k in keys:
+            if k in self.smoothed_losses_and_metrics:
+                del self.smoothed_losses_and_metrics[k]
 
     def get(self, extras=None):
         stats = collections.OrderedDict()

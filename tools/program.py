@@ -209,6 +209,7 @@ def train(
     profiler_options = config["profiler_options"]
     print_mem_info = config["Global"].get("print_mem_info", True)
     uniform_output_enabled = config["Global"].get("uniform_output_enabled", False)
+    log_grad_norm = config["Global"].get("log_grad_norm", False)
     
     hf = config["Global"].get("huggingface", dict())
     push_to_hub = hf.get("push_to_hub", False)
@@ -446,9 +447,20 @@ def train(
             train_stats.update(stats)
 
             if log_writer is not None and dist.get_rank() == 0:
+                grad_dict = dict()
+                if log_grad_norm:
+                    ave_grads = []
+                    layers = []
+                    for n, p in model.named_parameters():
+                        if p.grad is not None and "bias" not in n:
+                            layers.append(n)
+                            ave_grads.append(p.grad.abs().mean().cpu().item())
+                    grad_dict = dict(zip(layers, ave_grads))
+                    train_stats.update(grad_dict)
                 log_writer.log_metrics(
                     metrics=train_stats.get(), prefix="TRAIN", step=global_step
                 )
+                train_stats.remove(grad_dict.keys())
 
             if (global_step > 0 and global_step % print_batch_step == 0) or (
                 idx >= len(train_dataloader) - 1
