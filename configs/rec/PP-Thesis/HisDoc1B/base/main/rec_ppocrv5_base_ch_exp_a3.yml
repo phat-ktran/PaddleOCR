@@ -3,12 +3,10 @@ Global:
   debug: false
   use_gpu: true
   epoch_num: 10
-  log_grad_norm: true
   log_smooth_window: 20
   print_batch_step: 10
-  save_model_dir: ./output/rec_ppocrv5_base_ch_exp_a2.2
+  save_model_dir: ./output/rec_ppocrv5_base_ch_exp_a3
   save_epoch_step: 1
-  save_iter_step: 5000
   eval_batch_step: [0, 2000]
   cal_metric_during_train: true
   calc_epoch_interval: 1
@@ -17,7 +15,7 @@ Global:
   save_inference_dir:
   use_visualdl: false
   infer_img: null
-  character_dict_path: ./ppocr/utils/dict/PP-Thesis/hisdoc1b.txt
+  character_dict_path: ./ppocr/utils/dict/PP-Thesis/hisdoc1b_ss1.txt
   max_text_length: 40
   infer_mode: false
   use_space_char: false
@@ -37,7 +35,7 @@ Global:
 wandb:
   project: "Rec-Pretraining"
   entity: "trankim147-vnu-hcmus"
-  name: "A2.2"
+  name: "A3"
 
 Optimizer:
   name: Adam
@@ -46,7 +44,7 @@ Optimizer:
   lr:
     name: LinearWarmupCosine
     learning_rate: 0.001
-    warmup_steps: 5000
+    warmup_steps: 5
   regularizer:
     name: L2
     factor: 3.0e-05

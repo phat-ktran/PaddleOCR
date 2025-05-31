@@ -242,6 +242,8 @@ def train(
             )
         )
     save_epoch_step = config["Global"]["save_epoch_step"]
+    save_iter_step = config["Global"].get("save_iter_step", None)
+    assert not save_iter_step or isinstance(save_iter_step, int), "save_iter_step must be an integer"
     save_model_dir = config["Global"]["save_model_dir"]
     if not os.path.exists(save_model_dir):
         os.makedirs(save_model_dir)
@@ -314,7 +316,6 @@ def train(
                 if platform.system() == "Windows"
                 else len(train_dataloader)
             )
-
         for idx, batch in enumerate(train_dataloader):
             model.train()
             profiler.add_profiler_step(profiler_options)
@@ -380,7 +381,16 @@ def train(
                 avg_loss = loss["loss"]
                 avg_loss.backward()
                 optimizer.step()
-
+            grad_dict = dict()
+            if log_grad_norm:
+                ave_grads = []
+                layers = []
+                for n, p in model.named_parameters():
+                    if p.grad is not None and "bias" not in n:
+                        layers.append(n)
+                        ave_grads.append(p.grad.abs().mean().cpu().item())
+                grad_dict = dict(zip(layers, ave_grads))
+                train_stats.update(grad_dict)
             optimizer.clear_grad()
 
             if (
@@ -445,22 +455,56 @@ def train(
             }
             stats["lr"] = lr
             train_stats.update(stats)
+            
+                            
+            if(
+                dist.get_rank() == 0 and 
+                save_iter_step and 
+                not global_step % max_iter == 0 and
+                global_step % save_iter_step == 0
+            ):
+                prefix = "iter_step_{}".format(global_step)
+                if uniform_output_enabled:
+                    export(config, model, os.path.join(save_model_dir, prefix, "inference"))
+                    gc.collect()
+                    model_info = {"steps": global_step, "metric": best_model_dict}
+                else:
+                    model_info = None
+                save_model(
+                    model,
+                    optimizer,
+                    (
+                        os.path.join(save_model_dir, prefix)
+                        if uniform_output_enabled
+                        else save_model_dir
+                    ),
+                    logger,
+                    config,
+                    is_best=False,
+                    prefix=prefix,
+                    save_model_info=model_info,
+                    best_model_dict=best_model_dict,
+                    epoch=epoch,
+                    global_step=global_step,
+                    done_flag=epoch == config["Global"]["epoch_num"],
+                    push_to_hub=push_to_hub,
+                    hf_token=hf_token,
+                    repo_id=repo_id,
+                    repo_type=repo_type,
+                    ignore_patterns=ignore_patterns,
+                    run_as_future=run_as_future
+                )
+                if log_writer is not None:
+                    log_writer.log_model(
+                        is_best=False, prefix="iter_step_{}".format(epoch)
+                    )
 
             if log_writer is not None and dist.get_rank() == 0:
-                grad_dict = dict()
-                if log_grad_norm:
-                    ave_grads = []
-                    layers = []
-                    for n, p in model.named_parameters():
-                        if p.grad is not None and "bias" not in n:
-                            layers.append(n)
-                            ave_grads.append(p.grad.abs().mean().cpu().item())
-                    grad_dict = dict(zip(layers, ave_grads))
-                    train_stats.update(grad_dict)
                 log_writer.log_metrics(
                     metrics=train_stats.get(), prefix="TRAIN", step=global_step
                 )
-                train_stats.remove(grad_dict.keys())
+                if log_grad_norm:
+                    train_stats.remove(grad_dict.keys())
 
             if (global_step > 0 and global_step % print_batch_step == 0) or (
                 idx >= len(train_dataloader) - 1
@@ -596,6 +640,8 @@ def train(
                     )
 
             reader_start = time.time()
+        # This code block checks if the current process is the main process (rank 0) in a distributed training setup.
+        # It ensures that model saving and exporting operations are only performed by the main process to avoid conflicts.
         if dist.get_rank() == 0:
             prefix = "latest"
             if uniform_output_enabled:
@@ -629,8 +675,7 @@ def train(
             )
 
             if log_writer is not None:
-                log_writer.log_model(is_best=False, prefix="latest")
-
+                log_writer.log_model(is_best=False, prefix="latest")        
         if dist.get_rank() == 0 and epoch > 0 and epoch % save_epoch_step == 0:
             prefix = "iter_epoch_{}".format(epoch)
             if uniform_output_enabled:

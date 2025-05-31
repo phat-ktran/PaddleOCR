@@ -6,10 +6,10 @@ Global:
   log_grad_norm: true
   log_smooth_window: 20
   print_batch_step: 10
-  save_model_dir: ./output/rec_ppocrv5_base_ch_exp_a2.2
+  save_model_dir: ./output/rec_ppocrv5_base_ch_exp_a2.3
   save_epoch_step: 1
-  save_iter_step: 5000
-  eval_batch_step: [0, 2000]
+  save_iter_step: 5000 # save checkpoints every 5000 iterations
+  eval_batch_step: [41070, 41070]
   cal_metric_during_train: true
   calc_epoch_interval: 1
   pretrained_model: https://paddle-model-ecology.bj.bcebos.com/paddlex/official_pretrained_model/PP-OCRv5_server_rec_pretrained.pdparams
@@ -37,7 +37,7 @@ Global:
 wandb:
   project: "Rec-Pretraining"
   entity: "trankim147-vnu-hcmus"
-  name: "A2.2"
+  name: "A2.3"
 
 Optimizer:
   name: Adam
@@ -46,7 +46,7 @@ Optimizer:
   lr:
     name: LinearWarmupCosine
     learning_rate: 0.001
-    warmup_steps: 5000
+    warmup_steps: 6000
   regularizer:
     name: L2
     factor: 3.0e-05
