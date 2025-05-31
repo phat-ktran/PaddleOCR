@@ -391,6 +391,7 @@ def train(
                         ave_grads.append(p.grad.abs().mean().cpu().item())
                 grad_dict = dict(zip(layers, ave_grads))
                 train_stats.update(grad_dict)
+                del grad_dict
             optimizer.clear_grad()
 
             if (
