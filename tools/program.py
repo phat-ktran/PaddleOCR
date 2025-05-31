@@ -382,9 +382,11 @@ def train(
                 avg_loss = loss["loss"]
                 avg_loss.backward()
                 if grad_scale_factor != 1.0:
-                    for param in model.parameters():
+                    for name, param in model.named_parameters():
                         if param.grad is not None:
-                            param.grad.data *= grad_scale_factor
+                            if 'neck' in name.lower() or 'head' in name.lower():
+                                param.grad.data *= grad_scale_factor
+                                print(f"Amplified {name}: {param.grad.abs().mean():.2e}")
                 optimizer.step()
             grad_dict = dict()
             grad_dict_keys = []
