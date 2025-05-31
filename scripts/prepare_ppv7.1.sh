@@ -1,0 +1,17 @@
+#!/bin/bash
+
+# Navigate to the workspace directory
+cd /workspace/PaddleOCR/
+
+# Hugging Face dataset
+huggingface-cli download benvijamin/rec_paddle_v7.1_part1 \
+  --repo-type dataset \
+  --local-dir ./train_data/rec \
+  --token $HF_KEY
+
+huggingface-cli download benvijamin/rec_paddle_v7.1_part2 \
+    --repo-type dataset \
+    --local-dir ./train_data/rec \
+    --token $HF_KEY
+
+wandb login $WB_KEY
