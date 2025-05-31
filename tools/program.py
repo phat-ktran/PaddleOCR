@@ -382,6 +382,7 @@ def train(
                 avg_loss.backward()
                 optimizer.step()
             grad_dict = dict()
+            grad_dict_keys = []
             if log_grad_norm:
                 ave_grads = []
                 layers = []
@@ -391,6 +392,7 @@ def train(
                         ave_grads.append(p.grad.abs().mean().cpu().item())
                 grad_dict = dict(zip(layers, ave_grads))
                 train_stats.update(grad_dict)
+                grad_dict_keys = grad_dict.keys()
                 del grad_dict
             optimizer.clear_grad()
 
@@ -505,7 +507,7 @@ def train(
                     metrics=train_stats.get(), prefix="TRAIN", step=global_step
                 )
                 if log_grad_norm:
-                    train_stats.remove(grad_dict.keys())
+                    train_stats.remove(grad_dict_keys)
 
             if (global_step > 0 and global_step % print_batch_step == 0) or (
                 idx >= len(train_dataloader) - 1
