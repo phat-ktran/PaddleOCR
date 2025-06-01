@@ -74,7 +74,6 @@ Architecture:
     encoder_type: reshape
   Head:
     name: CTCHead
-    mid_channels: 512
     
 Loss:
   name: CTCLoss
