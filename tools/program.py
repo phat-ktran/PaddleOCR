@@ -492,7 +492,7 @@ def train(
                     prefix=prefix,
                     save_model_info=model_info,
                     best_model_dict=best_model_dict,
-                    epoch=epoch,
+                    epoch=epoch-1,
                     global_step=global_step,
                     done_flag=epoch == config["Global"]["epoch_num"],
                     push_to_hub=push_to_hub,

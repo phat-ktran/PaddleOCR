@@ -1300,9 +1300,9 @@ class PPHGNetV2(TheseusLayer):
         stage_config,
         stem_channels=[3, 32, 64],
         use_lab=False,
-        use_last_conv=True,
+        use_last_conv=False,
         class_expand=2048,
-        dropout_prob=0.0,
+        dropout_prob=0.1,
         class_num=1000,
         lr_mult_list=[1.0, 1.0, 1.0, 1.0, 1.0],
         det=False,
@@ -1377,10 +1377,11 @@ class PPHGNetV2(TheseusLayer):
                 padding=0,
                 bias_attr=False,
             )
-            self.act = ReLU()
+            self.act = nn.Hardswish()
             if self.use_lab:
                 self.lab = LearnableAffineBlock()
             self.dropout = nn.Dropout(p=dropout_prob, mode="downscale_in_infer")
+            self.out_channels = self.class_expand
 
         self.flatten = nn.Flatten(start_axis=1, stop_axis=-1)
         if not self.det:
@@ -1412,10 +1413,16 @@ class PPHGNetV2(TheseusLayer):
             return out
 
         if self.text_rec:
-            if self.training:
+            if not self.training:
                 x = F.adaptive_avg_pool2d(x, [1, self.out_char_num])
             else:
                 x = F.avg_pool2d(x, self.out_avg_kernel_size)
+            if self.use_last_conv:
+                x = self.last_conv(x)
+                if self.use_lab:
+                    x = self.lab(x)
+                x = self.act(x)
+                x = self.dropout(x)
         return x
 
 
@@ -1549,7 +1556,6 @@ def PPHGNetV2_B4(pretrained=False, use_ssld=False, det=False, text_rec=False, **
     
     model = PPHGNetV2(
         stage_config=stage_config_det if det else stage_config_rec,
-        use_lab=False,
         det=det,
         text_rec=text_rec,
         **kwargs,

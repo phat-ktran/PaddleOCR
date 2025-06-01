@@ -22,7 +22,7 @@ Global:
   use_amp: true
   use_wandb: true
   distributed: true
-  d2s_train_image_shape: [3, 32, 640]
+  d2s_train_image_shape: [3, 32, 584]
   
 wandb:
   project: "Rec-Pretraining"
@@ -50,7 +50,7 @@ Architecture:
     name: SVTRNet
     img_size:
       - 32
-      - 640
+      - 584
     out_char_num: 40 # W//4 or W//8 or W/12
     out_channels: 256
     patch_merging: Conv
@@ -97,11 +97,7 @@ Architecture:
     prenorm: false
   Neck:
     name: SequenceEncoder
-    encoder_type: svtr
-    dims: 120
-    depth: 2
-    hidden_dims: 120
-    kernel_size: [1, 3]
+    encoder_type: reshape
   Head:
     name: CTCHead
 
@@ -112,7 +108,7 @@ PostProcess:
   name: CTCLabelDecode
 
 Metric:
-  name: DistributedRecMetric
+  name: RecMetric
   main_indicator: acc
 
 Train:
@@ -129,7 +125,7 @@ Train:
           ext_data_num: 2
           image_shape:
             - 32
-            - 640
+            - 584
             - 3
       - RecAug: null
       - CTCLabelEncode: null
@@ -137,7 +133,7 @@ Train:
           image_shape:
             - 3
             - 32
-            - 640
+            - 584
           padding: true
       - KeepKeys:
           keep_keys:
@@ -151,7 +147,6 @@ Train:
     num_workers: 12
 
 Eval:
-  distributed: true
   dataset:
     name: LMDBDataSet
     data_dir: ./train_data/rec/val/
@@ -164,7 +159,7 @@ Eval:
           image_shape:
             - 3
             - 32
-            - 640
+            - 584
           padding: true
       - KeepKeys:
           keep_keys:
@@ -174,5 +169,5 @@ Eval:
   loader:
     shuffle: false
     drop_last: false
-    batch_size_per_card: 512
+    batch_size_per_card: 1024
     num_workers: 8
