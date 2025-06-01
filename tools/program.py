@@ -385,7 +385,6 @@ def train(
                     for name, param in model.named_parameters():
                         if param.grad is not None:
                             param.grad.data *= grad_scale_factor
-                            print(f"Amplified {name}: {param.grad.abs().mean():.2e}")
                 optimizer.step()
             grad_dict = dict()
             grad_dict_keys = []
