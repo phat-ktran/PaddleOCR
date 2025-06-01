@@ -59,7 +59,7 @@ Architecture:
     name: PPHGNetV2_B4
     text_rec: True
     stem_channels: [3, 32, 48]
-    out_char_num: 40 # for training mode
+    out_char_num: 50 # for training mode
     use_last_conv: True
     class_expand: 512
     out_avg_kernel_size: [4, 2] # for inference mode
