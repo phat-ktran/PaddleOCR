@@ -504,7 +504,7 @@ def train(
                 )
                 if log_writer is not None:
                     log_writer.log_model(
-                        is_best=False, prefix="iter_step_{}".format(epoch)
+                        is_best=False, prefix="iter_step_{}".format(global_step)
                     )
 
             if log_writer is not None and dist.get_rank() == 0:
