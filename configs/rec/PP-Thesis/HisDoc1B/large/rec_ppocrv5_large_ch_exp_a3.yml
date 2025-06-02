@@ -4,12 +4,12 @@ Global:
   use_gpu: true
   epoch_num: 100
   distributed: true
-  eval_batch_step: [10000, 2000]
+  eval_batch_step: [450000, 60000]
   log_smooth_window: 20
-  print_batch_step: 10
+  print_batch_step: 12
   save_model_dir: ./output/rec_ppocrv5_large_ch_exp_a3
   save_epoch_step: 1
-  save_iter_step: 2500 # save checkpoints every 5000 iterations
+  save_iter_step: 5400
   cal_metric_during_train: true
   calc_epoch_interval: 1
   
@@ -21,7 +21,7 @@ Global:
   #########################
   
   # Gradient
-  grad_acc: 4
+  grad_acc: 3
   #########################
   
   pretrained_model: null
@@ -50,9 +50,9 @@ Optimizer:
   clip_norm: 1.0
   lr:
     name: LinearWarmupCosine
-    learning_rate: 0.0005
+    learning_rate: 0.00125
     min_lr: 1.0e-05
-    warmup_steps: 50000
+    warmup_steps: 72000
   regularizer:
     name: L2
     factor: 1.0e-04
@@ -130,9 +130,9 @@ Train:
 
   loader:
     shuffle: true
-    batch_size_per_card: 128
+    batch_size_per_card: 400
     drop_last: true
-    num_workers: 16
+    num_workers: 8
 
 Eval:
   dataset:
@@ -157,5 +157,5 @@ Eval:
   loader:
     shuffle: false
     drop_last: false
-    batch_size_per_card: 384
-    num_workers: 12
+    batch_size_per_card: 1356
+    num_workers: 4
