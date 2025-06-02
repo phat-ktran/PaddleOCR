@@ -211,6 +211,7 @@ def train(
     uniform_output_enabled = config["Global"].get("uniform_output_enabled", False)
     log_grad_norm = config["Global"].get("log_grad_norm", False)
     grad_scale_factor = config["Global"].get("grad_scale_factor", 1.0)
+    grad_acc = config["Global"].get("grad_acc", 1)
     
     hf = config["Global"].get("huggingface", dict())
     push_to_hub = hf.get("push_to_hub", False)
@@ -358,7 +359,8 @@ def train(
                 avg_loss = loss["loss"]
                 scaled_avg_loss = scaler.scale(avg_loss)
                 scaled_avg_loss.backward()
-                scaler.minimize(optimizer, scaled_avg_loss)
+                if (idx + 1) % grad_acc == 0:
+                    scaler.minimize(optimizer, scaled_avg_loss)
             else:
                 if model_type == "table" or extra_input:
                     preds = model(images, data=batch[1:])
@@ -399,7 +401,9 @@ def train(
                 train_stats.update(grad_dict)
                 grad_dict_keys = grad_dict.keys()
                 del grad_dict
-            optimizer.clear_grad()
+            should_call = not scaler or (idx + 1) % grad_acc == 0
+            if should_call:
+                optimizer.clear_grad()
 
             if (
                 cal_metric_during_train and epoch % calc_epoch_interval == 0
@@ -453,7 +457,7 @@ def train(
             global_step += 1
             total_samples += len(images)
 
-            if not isinstance(lr_scheduler, float):
+            if not isinstance(lr_scheduler, float) and should_call:
                 lr_scheduler.step()
 
             # logger and visualdl
