@@ -16,24 +16,17 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import math
-import paddle
-from paddle import ParamAttr
 import paddle.nn as nn
-import paddle.nn.functional as F
 
 from ppocr.modeling.necks.rnn import (
     Im2Seq,
-    EncoderWithRNN,
-    EncoderWithFC,
     SequenceEncoder,
-    EncoderWithSVTR,
     trunc_normal_,
     zeros_,
 )
+from .rec_nrtr_head import Transformer
 from .rec_ctc_head import CTCHead
 from .rec_sar_head import SARHead
-from .rec_nrtr_head import Transformer
 
 
 class FCTranspose(nn.Layer):
@@ -72,9 +65,11 @@ class MultiHead(nn.Layer):
         self.use_pos = kwargs.get("use_pos", False)
         self.in_channels = in_channels
         if self.use_pool:
-            self.pool_kernel_size=kwargs.get("pool_kernel_size", [3, 2])
-            self.pool_stride=kwargs.get("pool_stride", self.pool_kernel_size)
-            self.pool = nn.AvgPool2D(kernel_size=self.pool_kernel_size, stride=self.pool_stride, padding=0)
+            self.pool_kernel_size = kwargs.get("pool_kernel_size", [3, 2])
+            self.pool_stride = kwargs.get("pool_stride", self.pool_kernel_size)
+            self.pool = nn.AvgPool2D(
+                kernel_size=self.pool_kernel_size, stride=self.pool_stride, padding=0
+            )
         self.gtc_head = "sar"
         assert len(self.head_list) >= 2
         for idx, head_name in enumerate(self.head_list):
@@ -115,16 +110,22 @@ class MultiHead(nn.Layer):
                 )
             elif name == "CTCHead":
                 # ctc neck
-                self.encoder_reshape = Im2Seq(in_channels)
-                neck_args = self.head_list[idx][name]["Neck"]
-                encoder_type = neck_args.pop("name")
-                self.ctc_encoder = SequenceEncoder(
-                    in_channels=in_channels, encoder_type=encoder_type, **neck_args
-                )
+                neck_args = self.head_list[idx][name].get("Neck", None)
+                if neck_args:
+                    self.encoder_reshape = Im2Seq(in_channels)
+                    encoder_type = neck_args.pop("name")
+                    self.ctc_encoder = SequenceEncoder(
+                        in_channels=in_channels, encoder_type=encoder_type, **neck_args
+                    )
+                else:
+                    self.ctc_encoder = None
+                    self.encoder_reshape = None
                 # ctc head
                 head_args = self.head_list[idx][name]["Head"]
                 self.ctc_head = eval(name)(
-                    in_channels=self.ctc_encoder.out_channels,
+                    in_channels=self.ctc_encoder.out_channels
+                    if neck_args
+                    else in_channels,
                     out_channels=out_channels_list["CTCLabelDecode"],
                     **head_args,
                 )
@@ -136,9 +137,14 @@ class MultiHead(nn.Layer):
     def forward(self, x, targets=None):
         if self.use_pool:
             x = self.pool(
-                x.reshape([0, self.pool_kernel_size[0], -1, self.in_channels]).transpose([0, 3, 1, 2])
+                x.reshape(
+                    [0, self.pool_kernel_size[0], -1, self.in_channels]
+                ).transpose([0, 3, 1, 2])
             )
-        ctc_encoder = self.ctc_encoder(x)
+        if self.ctc_encoder:
+            ctc_encoder = self.ctc_encoder(x)
+        else: 
+            ctc_encoder = x
         ctc_out = self.ctc_head(ctc_encoder, targets)
         head_out = dict()
         head_out["ctc"] = ctc_out
