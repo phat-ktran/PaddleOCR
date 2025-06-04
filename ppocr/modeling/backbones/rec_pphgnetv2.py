@@ -1413,7 +1413,7 @@ class PPHGNetV2(TheseusLayer):
             return out
 
         if self.text_rec:
-            if not self.training:
+            if self.training:
                 x = F.adaptive_avg_pool2d(x, [1, self.out_char_num])
             else:
                 x = F.avg_pool2d(x, self.out_avg_kernel_size)
