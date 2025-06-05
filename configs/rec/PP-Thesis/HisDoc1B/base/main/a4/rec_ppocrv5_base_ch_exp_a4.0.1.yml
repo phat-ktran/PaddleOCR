@@ -45,7 +45,7 @@ Optimizer:
     warmup_epoch: 5
   regularizer:
     name: L2
-    factor: 1.0e-06
+    factor: 1.0e-02
 
 Architecture:
   model_type: rec
