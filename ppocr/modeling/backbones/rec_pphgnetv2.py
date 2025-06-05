@@ -1320,6 +1320,7 @@ class PPHGNetV2(TheseusLayer):
         self.out_indices = out_indices if out_indices is not None else [0, 1, 2, 3]
         self.out_char_num = kwargs.get("out_char_num", 40)
         self.out_avg_kernel_size = kwargs.get("out_avg_kernel_size", [3, 2])
+        self.use_glb_avg = kwargs.get("use_glb_avg", False)
         self.out_channels = []
 
         # stem
@@ -1413,7 +1414,7 @@ class PPHGNetV2(TheseusLayer):
             return out
 
         if self.text_rec:
-            if self.training:
+            if self.training or self.use_glb_avg:
                 x = F.adaptive_avg_pool2d(x, [1, self.out_char_num])
             else:
                 x = F.avg_pool2d(x, self.out_avg_kernel_size)
