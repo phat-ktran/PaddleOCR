@@ -60,6 +60,11 @@ class ArgsParser(ArgumentParser):
             default=None,
             help="Specify the input size for the model in the format 'batch,channel,height,width'.",
         )
+        self.add_argument(
+            "--training",
+            action="store_true",
+            help="Enable training mode.",
+        )
 
     def parse_args(self, argv=None):
         args = super(ArgsParser, self).parse_args(argv)

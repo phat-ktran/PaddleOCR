@@ -4,10 +4,10 @@ Global:
   use_gpu: true
   epoch_num: 20
   distributed: true
-  eval_batch_step: [15620, 1562]
+  eval_batch_step: [10000, 2500]
   log_smooth_window: 20
   print_batch_step: 10
-  save_model_dir: ./output/rec_ppocrv5_base_ch_exp_a4.0.2
+  save_model_dir: ./output/rec_ppocrv5_base_ch_exp_a5.0.0
   save_epoch_step: 1
   cal_metric_during_train: true
   calc_epoch_interval: 1
@@ -16,9 +16,9 @@ Global:
   log_grad_norm: true
   #########################
   
-  pretrained_model: null
+  pretrained_model: https://paddle-model-ecology.bj.bcebos.com/paddlex/official_pretrained_model/PP-OCRv5_server_rec_pretrained.pdparams
   checkpoints: null
-  character_dict_path: ./ppocr/utils/dict/PP-Thesis/hisdoc1b_ss1.txt
+  character_dict_path: ./ppocr/utils/dict/PP-Thesis/hisdoc1b_19k.txt
   save_inference_dir:
   use_visualdl: false
   infer_img: null
@@ -33,7 +33,7 @@ Global:
 wandb:
   project: "Rec-Pretraining"
   entity: "trankim147-vnu-hcmus"
-  name: "A4.0.2"
+  name: "A5.0.0"
 
 Optimizer:
   name: Adam
@@ -45,7 +45,7 @@ Optimizer:
     warmup_epoch: 5
   regularizer:
     name: L2
-    factor: 5.0e-02
+    factor: 1.0e-02
 
 Architecture:
   model_type: rec
@@ -57,7 +57,7 @@ Architecture:
     stem_channels: [3, 32, 48]
     out_char_num: 40 # for training mode
     use_last_conv: True
-    class_expand: 512
+    class_expand: 384
     out_avg_kernel_size: [4, 2] # for inference mode
     stage_config_rec:
       # in_channels, mid_channels, out_channels, num_blocks, is_downsample, light_block, kernel_size, layer_num, stride

@@ -21,14 +21,16 @@
 - Initialize backbone with pretrained `PPOCRv5-server` weights
 - Head: `CTCHead`
 - Loss: `CTCLoss` with focal loss enabled
+- GPU: 8 x RTX 3090 24GB
+- Runtime: 165 mins
 - Goal: A simple run to verify the correctness of the model settings. Specifically, we need to check whether `out_char_num = 50` and `out_avg_kernel_size = [4,2]` gain optimal performance.
 - Evaluation:
 
-#### L2 Regularization: 1.0e-06
+#### L2 Regularization: 1.0e-06 (RTX 3090 24GB)
 
 | Timestep   | Epoch | Accuracy   | Character Accuracy | Normalized Edit Distance |
 | ---------- | ----- | ---------- | ------------------ | ------------------------ |
-| **T = 74** | 1     | 0.6106     | 0.8548             | 0.9339                   |
+| **T = 73** | 1     | 0.6106     | 0.8548             | 0.9339                   |
 |            | **2** | **0.6288** | **0.8547**         | **0.9402**               |
 |            | 3     | 0.5948     | 0.8302             | 0.9336                   |
 |            | 4     | 0.5114     | 0.7520             | 0.9188                   |
@@ -38,28 +40,9 @@
 |            | 3     | 0.6841     | 0.9394             | 0.9495                   |
 |            | 4     | 0.6065     | 0.8627             | 0.9350                   |
 |            | 5     | 0.3399     | 0.5693             | 0.8594                   |
-| **T = 40** | **2** | **0.2993** | **0.4631**         | **0.8519**               |
+| **T = 40** | 1     | 0.2993     | 0.4631             | 0.8519                   |
+|            | **2** | **0.2993** | **0.4631**         | **0.8519**               |
 |            | 3     | 0.2011     | 0.2787             | 0.7688                   |
-
-#### L2 Regularization: 1.0e-02
-
-| Timestep   | Epoch | Accuracy | Character Accuracy | Normalized Edit Distance |
-| ---------- | ----- | -------- | ------------------ | ------------------------ |
-| **T = 74** | 1     |          |                    |                          |
-|            | 2     |          |                    |                          |
-|            | 3     |          |                    |                          |
-|            | 4     |          |                    |                          |
-|            | 5     |          |                    |                          |
-| **T = 50** | 1     |          |                    |                          |
-|            | 2     |          |                    |                          |
-|            | 3     |          |                    |                          |
-|            | 4     |          |                    |                          |
-|            | 5     |          |                    |                          |
-| **T = 40** | 1     |          |                    |                          |
-|            | 2     |          |                    |                          |
-|            | 3     |          |                    |                          |
-|            | 4     |          |                    |                          |
-|            | 5     |          |                    |                          |
 
 ### **A4.0.1**
 
@@ -70,28 +53,30 @@
 - Initialize backbone with pretrained `PPOCRv5-server` weights
 - Head: `CTCHead`
 - Loss: `CTCLoss` with focal loss enabled
+- GPU: 8 x RTX 3090 24GB
+- Runtime: 165 mins
 - Goal: Training with `out_char_num = 40` and `out_avg_kernel_size = [4,2]` to verify whether the model performs better than `out_char_num = 50` on evaluation set.
 - Evaluation:
 
-#### L2 Regularization: 1.0e-02
+#### L2 Regularization: 1.0e-02 (RTX 3060 12GB & RTX 4070S Ti 16GB)
 
-| Timestep   | Epoch | Accuracy | Character Accuracy | Normalized Edit Distance |
-| ---------- | ----- | -------- | ------------------ | ------------------------ |
-| **T = 74** | 1     |          |                    |                          |
-|            | 2     |          |                    |                          |
-|            | 3     |          |                    |                          |
-|            | 4     |          |                    |                          |
-|            | 5     |          |                    |                          |
-| **T = 50** | 1     |          |                    |                          |
-|            | 2     |          |                    |                          |
-|            | 3     |          |                    |                          |
-|            | 4     |          |                    |                          |
-|            | 5     |          |                    |                          |
-| **T = 40** | 1     |          |                    |                          |
-|            | 2     |          |                    |                          |
-|            | 3     |          |                    |                          |
-|            | 4     |          |                    |                          |
-|            | 5     |          |                    |                          |
+| Timestep   | Epoch | Accuracy           | Character Accuracy | Normalized Edit Distance |
+| ---------- | ----- | ------------------ | ------------------ | ------------------------ |
+| **T = 73** | 1     | 0.6149607617979574 | 0.8595995846841524 | 0.935286715701296        |
+|            | 2     | 0.6354686206849752 | 0.8766606086911308 | 0.940179808171752        |
+|            | 3     | 0.6220283854811952 | 0.8638597356517836 | 0.9364579272371905       |
+|            | 4     | 0.428149992614167  | 0.8291178186879805 | 0.8858016723569082       |
+|            | 5     |                    |                    |                          |
+| **T = 50** | 1     |                    |                    |                          |
+|            | 2     |                    |                    |                          |
+|            | 3     |                    |                    |                          |
+|            | 4     |                    |                    |                          |
+|            | 5     |                    |                    |                          |
+| **T = 40** | 1     | 0.6574990062161713 | 0.9349121894844644 | 0.944014232568019        |
+|            | 2     | 0.6811544201853243 | 0.9443445253988322 | 0.948926982672158        |
+|            | 3     | 0.6684091971442397 | 0.9379651962317428 | 0.9458545283082695       |
+|            | 4     | 0.5582547694445089 | 0.9404527222772292 | 0.9181602729148468       |
+|            | 5     |                    |                    |                          |
 
 ### **A4.0.2**
 
@@ -107,7 +92,7 @@
 
 | Timestep   | Epoch | Accuracy | Character Accuracy | Normalized Edit Distance |
 | ---------- | ----- | -------- | ------------------ | ------------------------ |
-| **T = 74** |       |          |                    |                          |
+| **T = 73** |       |          |                    |                          |
 |            | 1     |          |                    |                          |
 |            | 2     |          |                    |                          |
 |            | 3     |          |                    |                          |
