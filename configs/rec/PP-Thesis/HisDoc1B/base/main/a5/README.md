@@ -4,31 +4,30 @@
 
 ## **Dataset**
 
-| Dataset Name  | Description                                                                            | Size      | Source      | Training/Eval Size | Vocab Size |
-| ------------- | -------------------------------------------------------------------------------------- | --------- | ----------- | ------------------ | ---------- |
-| paddle_v5_ss1 | A stratified subsample of the original dataset, balanced with respect to book fraction | 2 million | hisdoc1b_2m | 1.6M / 0.4M        | 25869      |
+| Dataset Name | Description                                                                            | Size      | Source      | Training/Eval Size | Vocab Size |
+| ------------ | -------------------------------------------------------------------------------------- | --------- | ----------- | ------------------ | ---------- |
+| hisdoc1b_5m  | A stratified subsample of the original dataset, balanced with respect to book fraction | 5 million | hisdoc1b_2m | 5.0M / 0.03M       | 19000      |
 
 ---
 
 ## **Experiments**
 
-### **A5.0** & **A5.0.0**
+### **A5.0.0**
 
 ---
 
 - Backbone: PPHGNetv2-B4 with `use_last_conv = True` and `class_expand = 512`
 - Neck: SequenceEncoder with `reshape` only
-- Initialize backbone with pretrained `PPOCRv5-server` weights
+- **Initialize backbone with pretrained `PPOCRv5-server` weights**
 - Head: `CTCHead`
 - Loss: `CTCLoss` with focal loss enabled
-- Goal: A simple run to verify the correctness of the model settings. Specifically, we need to check whether `out_char_num = 50` and `out_avg_kernel_size = [4,2]` gain optimal performance.
+- L2 Regularization: 3.0e-03
 - Evaluation:
-
-#### L2 Regularization: 1.0e-02
 
 | Timestep   | Epoch | Accuracy | Character Accuracy | Normalized Edit Distance |
 | ---------- | ----- | -------- | ------------------ | ------------------------ |
-| **T = 73** | 1     |          |                    |                          | |            | 2     |          |                    |                          |
+| **T = 73** | 1     |          |                    |                          |
+|            | 2     |          |                    |                          |
 |            | 3     |          |                    |                          |
 |            | 4     |          |                    |                          |
 |            | 5     |          |                    |                          |
@@ -48,18 +47,17 @@
 ---
 
 - Backbone: PPHGNetv2-B4 with `use_last_conv = True` and `class_expand = 512`
-- Neck: SequenceEncoder with `reshape` only
 - Initialize backbone with pretrained `PPOCRv5-server` weights
-- Head: `CTCHead`
+- Head: `MultiHead` with `CTCHead` and `NRTRHead`
 - Loss: `CTCLoss` with focal loss enabled
-- Goal: Training with `out_char_num = 40` and `out_avg_kernel_size = [4,2]` to verify whether the model performs better than `out_char_num = 50` on evaluation set.
+- Training with `out_char_num = 40` and `out_avg_kernel_size = [4,2]`
+- L2 Regularization: 3.0e-03
 - Evaluation:
-
-#### L2 Regularization: 1.0e-02
 
 | Timestep   | Epoch | Accuracy | Character Accuracy | Normalized Edit Distance |
 | ---------- | ----- | -------- | ------------------ | ------------------------ |
-| **T = 73** | 1     |          |                    |                          | |            | 2     |          |                    |                          |
+| **T = 73** | 1     |          |                    |                          |
+|            | 2     |          |                    |                          |
 |            | 3     |          |                    |                          |
 |            | 4     |          |                    |                          |
 |            | 5     |          |                    |                          |
@@ -88,7 +86,7 @@
 
 | Timestep   | Epoch | Accuracy | Character Accuracy | Normalized Edit Distance |
 | ---------- | ----- | -------- | ------------------ | ------------------------ |
-| **T = 73** |       |          |                    |                          | |            | 1     |          |                    |                          |
+| **T = 73** | 1     |          |                    |                          |
 |            | 2     |          |                    |                          |
 |            | 3     |          |                    |                          |
 |            | 4     |          |                    |                          |

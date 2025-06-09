@@ -7,7 +7,7 @@ Global:
   eval_batch_step: [10000, 2500]
   log_smooth_window: 20
   print_batch_step: 10
-  save_model_dir: ./output/rec_ppocrv5_base_ch_exp_a5.0.1
+  save_model_dir: ./output/rec_ppocrv5_base_ch_exp_a5.0.3
   save_epoch_step: 1
   cal_metric_during_train: true
   calc_epoch_interval: 1
@@ -16,7 +16,7 @@ Global:
   log_grad_norm: true
   #########################
 
-  pretrained_model: https://paddle-model-ecology.bj.bcebos.com/paddlex/official_pretrained_model/PP-OCRv5_server_rec_pretrained.pdparams
+  pretrained_model: null
   checkpoints: null
   character_dict_path: ./ppocr/utils/dict/PP-Thesis/hisdoc1b_19k.txt
   save_inference_dir:
@@ -33,7 +33,7 @@ Global:
 wandb:
   project: "HisDoc1B-5M"
   entity: "trankim147-vnu-hcmus"
-  name: "A5.0.1"
+  name: "A5.0.3"
 
 Optimizer:
   name: Adam
@@ -45,7 +45,7 @@ Optimizer:
     warmup_epoch: 2
   regularizer:
     name: L2
-    factor: 3.0e-03
+    factor: 3.0e-05
 
 Architecture:
   model_type: rec
@@ -55,11 +55,11 @@ Architecture:
     name: PPHGNetV2_B4
     text_rec: True
     stem_channels: [3, 32, 48]
-    out_char_num: *max_text_length # for training mode
+    out_char_num: 40 # for training mode
     out_avg_kernel_size: [4, 2] # for inference mode
     stage_config_rec:
       # in_channels, mid_channels, out_channels, num_blocks, is_downsample, light_block, kernel_size, layer_num, stride
-      stage1: [48, 48, 128, 1, True, False, 3, 6, [2, 1]]
+      stage1: [48, 48, 128, 1, False, False, 3, 6, [2, 1]]
       stage2: [128, 96, 512, 1, True, False, 3, 6, [1, 2]]
       stage3: [512, 192, 1024, 3, True, True, 5, 6, [2, 1]]
       stage4: [1024, 384, 2048, 1, True, True, 5, 6, [2, 1]]
@@ -154,3 +154,4 @@ Eval:
     drop_last: false
     batch_size_per_card: 512
     num_workers: 12
+

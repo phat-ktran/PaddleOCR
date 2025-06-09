@@ -399,14 +399,19 @@ class PPLCNetV3(nn.Layer):
         lr_mult_list=[1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
         lab_lr=0.1,
         det=False,
+        net_config=None,
+        out_char_num=40,
+        glb_avg_kernel=[3,2],
         **kwargs,
     ):
         super().__init__()
         self.scale = scale
+        self.glb_avg_kernel = glb_avg_kernel
+        self.out_char_num = out_char_num
         self.lr_mult_list = lr_mult_list
         self.det = det
 
-        self.net_config = NET_CONFIG_det if self.det else NET_CONFIG_rec
+        self.net_config = net_config if net_config else NET_CONFIG_det if self.det else NET_CONFIG_rec
 
         assert isinstance(
             self.lr_mult_list, (list, tuple)
@@ -552,7 +557,7 @@ class PPLCNetV3(nn.Layer):
             return out_list
 
         if self.training:
-            x = F.adaptive_avg_pool2d(x, [1, 40])
+            x = F.adaptive_avg_pool2d(x, [1, self.out_char_num])
         else:
-            x = F.avg_pool2d(x, [3, 2])
+            x = F.avg_pool2d(x, self.glb_avg_kernel)
         return x

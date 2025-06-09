@@ -36,7 +36,9 @@ from ppocr.data.imaug import transform, create_operators
 from ppocr.data.simple_dataset import SimpleDataSet, MultiScaleDataSet
 from ppocr.data.lmdb_dataset import (
     LMDBDataSet,
+    UnifiedLMDBDataSet,
     MultiScaleLMDBDataSet,
+    UnifiedMultiScaleLMDBDataSet,
     CurriculumLMDBDataSet,
     LMDBDataSetSR,
     LMDBDataSetTableMaster,
@@ -93,6 +95,7 @@ def build_dataloader(config, mode, device, logger, seed=None):
     support_dict = [
         "SimpleDataSet",
         "LMDBDataSet",
+        "UnifiedLMDBDataSet",
         "CurriculumLMDBDataSet",
         "PGDataSet",
         "PubTabDataSet",
@@ -100,6 +103,7 @@ def build_dataloader(config, mode, device, logger, seed=None):
         "LMDBDataSetTableMaster",
         "MultiScaleDataSet",
         "MultiScaleLMDBDataSet",
+        "UnifiedMultiScaleLMDBDataSet",
         "TextDetDataset",
         "TextRecDataset",
         "MSTextRecDataset",

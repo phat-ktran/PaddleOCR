@@ -215,9 +215,11 @@ class PPHGNet(nn.Layer):
         in_channels=3,
         det=False,
         out_indices=None,
+        out_char_num=40,
     ):
         super().__init__()
         self.det = det
+        self.out_char_num=out_char_num
         self.out_indices = out_indices if out_indices is not None else [0, 1, 2, 3]
 
         # stem
@@ -291,7 +293,7 @@ class PPHGNet(nn.Layer):
             return out
 
         if self.training:
-            x = F.adaptive_avg_pool2d(x, [1, 40])
+            x = F.adaptive_avg_pool2d(x, [1, self.out_char_num])
         else:
             x = F.avg_pool2d(x, [3, 2])
         return x
@@ -346,11 +348,15 @@ def PPHGNet_small(pretrained=False, use_ssld=False, det=False, **kwargs):
         "stage3": [512, 192, 768, 2, True, [2, 1]],
         "stage4": [768, 224, 1024, 1, True, [2, 1]],
     }
+    
+    if kwargs.get("stage_config_rec"):
+        stage_config_rec = kwargs.pop("stage_config_rec")
+        
+    stem_channels=kwargs.pop("stem_channels", [64, 64, 128])
 
     model = PPHGNet(
-        stem_channels=[64, 64, 128],
+        stem_channels=stem_channels,
         stage_config=stage_config_det if det else stage_config_rec,
-        layer_num=6,
         det=det,
         **kwargs,
     )
