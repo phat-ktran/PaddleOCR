@@ -26,14 +26,14 @@ Global:
   infer_mode: false
   use_space_char: false
   max_text_length: &max_text_length 40
-  use_amp: true
+  # use_amp: true
   use_wandb: true
   d2s_train_image_shape: [3, 32, 640]
 
 wandb:
   project: "HisDoc1B-5M"
   entity: "trankim147-vnu-hcmus"
-  name: "A5.0.0"
+  name: "A5.0.0.1"
 
 Optimizer:
   name: Adam
@@ -143,5 +143,5 @@ Eval:
   loader:
     shuffle: false
     drop_last: false
-    batch_size_per_card: 512
+    batch_size_per_card: 256
     num_workers: 12
