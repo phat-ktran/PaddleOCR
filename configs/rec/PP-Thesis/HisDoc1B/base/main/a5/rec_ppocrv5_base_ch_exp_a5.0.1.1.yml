@@ -137,18 +137,20 @@ Eval:
     data_dir: ./train_data/rec/full
     val_ids: ./train_data/rec/val_ids.json
     transforms:
-      - DecodeImage:
-          img_mode: BGR
-          channel_first: false
-      - MultiLabelEncode:
-          gtc_encode: NRTRLabelEncode
-      - RecResizeImg:
-          image_shape: [3, 32, 584]
-      - KeepKeys:
-          keep_keys:
-            - image
-            - label
-            - length
+    - DecodeImage:
+        img_mode: BGR
+        channel_first: false
+    - MultiLabelEncode:
+        gtc_encode: NRTRLabelEncode
+    - RecResizeImg:
+        image_shape: [3, 48, 320]
+    - KeepKeys:
+        keep_keys:
+        - image
+        - label_ctc
+        - label_gtc
+        - length
+        - valid_ratio
   loader:
     shuffle: false
     drop_last: false
