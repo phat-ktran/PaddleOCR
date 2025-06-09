@@ -69,9 +69,9 @@ Architecture:
       - CTCHead:
           Neck:
             name: svtr
-            dims: 180
+            dims: 160
             depth: 2
-            hidden_dims: 180
+            hidden_dims: 160
             kernel_size: [1, 3]
             use_guide: True
           Head:
