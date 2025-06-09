@@ -56,16 +56,19 @@ Architecture:
     text_rec: True
     stem_channels: [3, 32, 48]
     out_char_num: *max_text_length # for training mode
-    use_last_conv: True
+    use_last_conv: true
     class_expand: 256
     use_glb_avg: true
-    out_avg_kernel_size: [4, 2] # for inference mode
+    out_avg_kernel_size: [4, 4] # for inference mode
     stage_config_rec:
       # in_channels, mid_channels, out_channels, num_blocks, is_downsample, light_block, kernel_size, layer_num, stride
       stage1: [48, 48, 128, 1, False, False, 3, 6, [2, 1]]
       stage2: [128, 96, 512, 1, True, False, 3, 6, [1, 2]]
       stage3: [512, 192, 1024, 3, True, True, 5, 6, [2, 1]]
       stage4: [1024, 384, 2048, 1, True, True, 5, 6, [2, 1]]
+  Neck:
+    name: SequenceEncoder
+    encoder_type: reshape
   Head:
     name: CTCHead
     

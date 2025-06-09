@@ -1371,7 +1371,7 @@ class PPHGNetV2(TheseusLayer):
 
         if self.use_last_conv:
             self.last_conv = Conv2D(
-                in_channels=out_channels,
+                in_channels=self.out_channels,
                 out_channels=self.class_expand,
                 kernel_size=1,
                 stride=1,
