@@ -57,6 +57,7 @@ Architecture:
     stem_channels: [3, 32, 48]
     out_char_num: *max_text_length # for training mode
     out_avg_kernel_size: [4, 2] # for inference mode
+    use_glb_avg: true
     stage_config_rec:
       # in_channels, mid_channels, out_channels, num_blocks, is_downsample, light_block, kernel_size, layer_num, stride
       stage1: [48, 48, 128, 1, True, False, 3, 6, [2, 1]]
