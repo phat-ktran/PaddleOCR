@@ -11,11 +11,6 @@ Global:
   save_epoch_step: 1
   cal_metric_during_train: true
   calc_epoch_interval: 1
-
-  # vanish gradient combat
-  log_grad_norm: true
-  #########################
-
   pretrained_model: null
   checkpoints: null
   character_dict_path: ./ppocr/utils/dict/PP-Thesis/hisdoc1b_19k.txt
@@ -26,9 +21,8 @@ Global:
   infer_mode: false
   use_space_char: false
   max_text_length: &max_text_length 40
-  use_amp: true
   use_wandb: true
-  d2s_train_image_shape: [3, 32, 584]
+  d2s_train_image_shape: [3, 32, 640]
 
 Optimizer:
   name: Adam
@@ -36,8 +30,8 @@ Optimizer:
   beta2: 0.999
   lr:
     name: Cosine
-    learning_rate: 0.001
-    warmup_epoch: 5
+    learning_rate: 0.0005
+    warmup_epoch: 2
   regularizer:
     name: L2
     factor: 3.0e-05
@@ -51,6 +45,7 @@ Architecture:
     out_char_num: *max_text_length
     layer_num: 6
     stem_channels: [64, 64, 128]
+    out_avg_kernel_size: [2,4]
     stage_config_rec:
       # in_channels, mid_channels, out_channels, blocks, downsample
       stage1: [128, 128, 256, 1, True, [2, 1]]
@@ -63,9 +58,9 @@ Architecture:
       - CTCHead:
           Neck:
             name: svtr
-            dims: 160
+            dims: 120
             depth: 2
-            hidden_dims: 160
+            hidden_dims: 120
             kernel_size: [1, 3]
             use_guide: True
           Head:
@@ -78,9 +73,7 @@ Loss:
   name: MultiLoss
   loss_config_list:
     - CTCLoss:
-        use_focal_loss: true
     - NRTRLoss:
-        smoothing: True
 
 PostProcess:
   name: CTCLabelDecode
@@ -91,7 +84,7 @@ Metric:
 
 Train:
   dataset:
-    name: DynamicMultiScaleDataSet
+    name: UnifiedMultiScaleLMDBDataSet
     ds_width: false
     data_dir: ./train_data/rec/full
     val_ids: ./train_data/rec/val_ids.json
@@ -103,7 +96,7 @@ Train:
       - RecConAug:
           prob: 0.5
           ext_data_num: 2
-          image_shape: [48, 584, 3]
+          image_shape: [32, 640, 3]
           max_text_length: *max_text_length
       - RecAug:
       - MultiLabelEncode:
@@ -117,8 +110,8 @@ Train:
             - valid_ratio
   sampler:
     name: MultiScaleSampler
-    scales: [[584, 32], [584, 48], [584, 64]]
-    first_bs: &bs 128
+    scales: [[640, 32], [640, 48], [640, 64]]
+    first_bs: &bs 96
     fix_bs: false
     divided_factor: [8, 16] # w, h
     is_training: True
@@ -130,7 +123,7 @@ Train:
 
 Eval:
   dataset:
-    name: DynamicMultiScaleDataSet
+    name: UnifiedLMDBDataSet
     ds_width: false
     data_dir: ./train_data/rec/full
     val_ids: ./train_data/rec/val_ids.json
@@ -142,7 +135,7 @@ Eval:
       - MultiLabelEncode:
           gtc_encode: NRTRLabelEncode
       - RecResizeImg:
-          image_shape: [3, 48, 584]
+          image_shape: [3, 32, 640]
       - KeepKeys:
           keep_keys:
             - image
