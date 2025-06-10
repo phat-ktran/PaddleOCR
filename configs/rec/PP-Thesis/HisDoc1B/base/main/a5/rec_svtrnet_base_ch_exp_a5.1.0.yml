@@ -1,26 +1,29 @@
 Global:
+  model_name: SVTRNet
+  debug: false
   use_gpu: true
   epoch_num: 20
+  distributed: true
   log_smooth_window: 20
   print_batch_step: 10
   save_model_dir: ./output/rec_svtrnet_base_ch_exp_a5.1.0/
   save_epoch_step: 1
-  eval_batch_step: [2000, 1000]
+  eval_batch_step: [0, 4882]
   cal_metric_during_train: true
-  pretrained_model: null
+
+  pretrained_model: https://paddle-model-ecology.bj.bcebos.com/paddlex/official_pretrained_model/PP-OCRv5_server_rec_pretrained.pdparams
   checkpoints: null
-  save_inference_dir: null
+  character_dict_path: ./ppocr/utils/dict/PP-Thesis/hisdoc1b_19k.txt
+  save_inference_dir:
   use_visualdl: false
   infer_img: null
-  character_dict_path: ppocr/utils/dict/PP-Thesis/hisdoc1b_19k.txt
-  max_text_length: &max_text_length 40
+  save_res_path: null
   infer_mode: false
   use_space_char: false
-  save_res_path: null
+  max_text_length: &max_text_length 40
   use_amp: true
   use_wandb: true
-  distributed: true
-  d2s_train_image_shape: [3, 32, 584]
+  d2s_train_image_shape: [3, 32, 640]
   
 wandb:
   project: "HisDoc1B-5M"
@@ -48,11 +51,15 @@ Architecture:
     name: SVTRNet
     img_size:
       - 32
-      - 584
-    out_char_num: 40 # W//4 or W//8 or W/12
+      - 640
+    out_char_num: *max_text_length # W//4 or W//8 or W/12
     out_channels: 256
     patch_merging: Conv
     patch_size: [4, 8]
+    drop_rate: 0.2
+    last_drop: 0.1
+    attn_drop_rate: 0.1
+    drop_path_rate: 0.2
     embed_dim:
       - 128
       - 256
@@ -60,7 +67,7 @@ Architecture:
     depth:
       - 3
       - 6
-      - 9
+      - 6
     num_heads:
       - 4
       - 8
@@ -91,35 +98,17 @@ Architecture:
         - 11
       - - 7
         - 11
-    last_stage: false
+    last_stage: true
     prenorm: true
   Neck:
     name: SequenceEncoder
     encoder_type: reshape
   Head:
-    name: MultiHead
-    use_pool: false
-    use_pos: true
-    head_list:
-      - CTCHead:
-          Neck:
-            name: svtr
-            dims: 160
-            depth: 2
-            hidden_dims: 160
-            kernel_size: [1, 3]
-            use_guide: True
-          Head:
-            fc_decay: 0.00001
-      - NRTRHead:
-          nrtr_dim: 384
-          max_text_length: *max_text_length
+    name: CTCHead
 
 Loss:
-  name: MultiLoss
-  loss_config_list:
-    - CTCLoss:
-    - NRTRLoss:
+  name: CTCLoss
+  use_focal_loss: true
 
 PostProcess:
   name: CTCLabelDecode
@@ -130,8 +119,7 @@ Metric:
 
 Train:
   dataset:
-    name: UnifiedMultiScaleLMDBDataSet
-    ds_width: false
+    name: UnifiedLMDBDataSet
     data_dir: ./train_data/rec/full
     val_ids: ./train_data/rec/val_ids.json
     ext_op_transform_idx: 1
@@ -139,26 +127,29 @@ Train:
       - DecodeImage:
           img_mode: BGR
           channel_first: false
+      - RecConAug:
+          prob: 0.5
+          ext_data_num: 2
+          image_shape:
+            - 32
+            - 640
+            - 3
       - RecAug:
-      - MultiLabelEncode:
-          gtc_encode: NRTRLabelEncode
+      - CTCLabelEncode: null
+      - SVTRRecResizeImg:
+          image_shape:
+            - 3
+            - 32
+            - 640
+          padding: true
       - KeepKeys:
           keep_keys:
             - image
-            - label_ctc
-            - label_gtc
+            - label
             - length
-            - valid_ratio
-  sampler:
-    name: MultiScaleSampler
-    scales: [[584, 32], [584, 48], [584, 64]]
-    first_bs: &bs 128
-    fix_bs: false
-    divided_factor: [8, 16] # w, h
-    is_training: True
   loader:
     shuffle: true
-    batch_size_per_card: *bs
+    batch_size_per_card: 128
     drop_last: true
     num_workers: 16
 
@@ -171,10 +162,13 @@ Eval:
       - DecodeImage:
           img_mode: BGR
           channel_first: false
-      - MultiLabelEncode:
-          gtc_encode: NRTRLabelEncode
-      - RecResizeImg:
-          image_shape: [3, 32, 584]
+      - CTCLabelEncode: null
+      - SVTRRecResizeImg:
+          image_shape:
+            - 3
+            - 32
+            - 640
+          padding: true
       - KeepKeys:
           keep_keys:
             - image
@@ -183,5 +177,5 @@ Eval:
   loader:
     shuffle: false
     drop_last: false
-    batch_size_per_card: 512
+    batch_size_per_card: 384
     num_workers: 12
