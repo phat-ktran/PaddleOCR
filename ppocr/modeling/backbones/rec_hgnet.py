@@ -216,10 +216,12 @@ class PPHGNet(nn.Layer):
         det=False,
         out_indices=None,
         out_char_num=40,
+        out_avg_kernel_size=[3,2]
     ):
         super().__init__()
         self.det = det
-        self.out_char_num=out_char_num
+        self.out_char_num= out_char_num
+        self.out_avg_kernel_size = out_avg_kernel_size
         self.out_indices = out_indices if out_indices is not None else [0, 1, 2, 3]
 
         # stem
@@ -295,7 +297,7 @@ class PPHGNet(nn.Layer):
         if self.training:
             x = F.adaptive_avg_pool2d(x, [1, self.out_char_num])
         else:
-            x = F.avg_pool2d(x, [3, 2])
+            x = F.avg_pool2d(x, self.out_avg_kernel_size)
         return x
 
 
