@@ -11,7 +11,7 @@ Global:
   eval_batch_step: [0, 4882]
   cal_metric_during_train: true
 
-  pretrained_model: https://paddle-model-ecology.bj.bcebos.com/paddlex/official_pretrained_model/PP-OCRv5_server_rec_pretrained.pdparams
+  pretrained_model: null
   checkpoints: null
   character_dict_path: ./ppocr/utils/dict/PP-Thesis/hisdoc1b_19k.txt
   save_inference_dir:
