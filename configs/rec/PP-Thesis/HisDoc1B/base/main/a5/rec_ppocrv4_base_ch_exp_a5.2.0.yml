@@ -24,6 +24,11 @@ Global:
   use_wandb: true
   d2s_train_image_shape: [3, 32, 640]
 
+wandb:
+  project: "HisDoc1B-5M"
+  entity: "trankim147-vnu-hcmus"
+  name: "A5.2.0"
+  
 Optimizer:
   name: Adam
   beta1: 0.9
