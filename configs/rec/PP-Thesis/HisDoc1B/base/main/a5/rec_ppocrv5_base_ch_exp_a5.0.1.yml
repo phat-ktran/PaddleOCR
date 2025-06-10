@@ -147,8 +147,10 @@ Eval:
       - KeepKeys:
           keep_keys:
             - image
-            - label
+            - label_ctc
+            - label_gtc
             - length
+            - valid_ratio
   loader:
     shuffle: false
     drop_last: false
