@@ -123,6 +123,7 @@ Train:
     data_dir: ./train_data/
     label_file_list:
       - ./train_data/ihr-train.txt
+      - ./train_data/ihr-val.txt
       - ./train_data/kinh_su_tu.txt
       - ./train_data/nomna-train.txt
       - ./train_data/hisdoc1b_500k.txt
@@ -162,7 +163,6 @@ Eval:
     name: SimpleDataSet
     data_dir: ./train_data/
     label_file_list:
-      - ./train_data/ihr-val.txt
       - ./train_data/nomna-validate.txt
     transforms:
       - DecodeImage:
