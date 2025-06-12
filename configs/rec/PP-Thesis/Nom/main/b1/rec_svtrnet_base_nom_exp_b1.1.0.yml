@@ -11,7 +11,7 @@ Global:
   eval_batch_step: [0, 4882]
   cal_metric_during_train: true
 
-  pretrained_model: null
+  pretrained_model: ./output/rec_svtrnet_base_ch_exp_a5.1.0/best_accuracy
   checkpoints: null
   character_dict_path: ./ppocr/utils/dict/PP-Thesis/hisdoc1b_16k_nom_all.txt
   save_inference_dir:
