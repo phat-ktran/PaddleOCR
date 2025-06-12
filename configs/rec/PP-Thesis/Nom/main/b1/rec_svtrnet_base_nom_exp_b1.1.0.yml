@@ -126,10 +126,18 @@ Train:
       - ./train_data/kinh_su_tu.txt
       - ./train_data/nomna-train.txt
       - ./train_data/hisdoc1b_500k.txt
+    ext_op_transform_idx: 1
     transforms:
       - DecodeImage:
           img_mode: BGR
           channel_first: false
+      - RecConAug:
+          prob: 0.5
+          ext_data_num: 2
+          image_shape:
+            - 32
+            - 640
+            - 3
       - RecAug:
       - CTCLabelEncode: null
       - SVTRRecResizeImg:
