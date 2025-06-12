@@ -213,7 +213,7 @@ def load_pretrained_params(model, path, config):
                     topk = overlap_dim
                 new_state_dict[k1] = state_dict[k1].clone()
                 if params[k1].ndim > 1:
-                    new_state_dict[k1][:, :topk] = params[k1]
+                    new_state_dict[k1][:, :topk] = params[k1][:, :topk]
                 else:
                     new_state_dict[k1][:topk] = params[k1]
                 
