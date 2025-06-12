@@ -126,7 +126,6 @@ Train:
       - ./train_data/kinh_su_tu.txt
       - ./train_data/nomna-train.txt
       - ./train_data/hisdoc1b_500k.txt
-    ext_op_transform_idx: 1
     transforms:
       - DecodeImage:
           img_mode: BGR
