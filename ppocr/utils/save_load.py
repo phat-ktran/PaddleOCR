@@ -167,14 +167,16 @@ def load_model(config, model, optimizer=None, model_type="det"):
                 best_model_dict["global_step"] = states_dict["global_step"]
         logger.info("resume from {}".format(checkpoints))
     elif pretrained_model:
-        is_float16 = load_pretrained_params(model, pretrained_model, handle_mismatch)
+        is_float16 = load_pretrained_params(model, pretrained_model, config)
     else:
         logger.info("train from scratch")
     best_model_dict["is_float16"] = is_float16
     return best_model_dict
 
 
-def load_pretrained_params(model, path, handle_mismatch=False):
+def load_pretrained_params(model, path, config):
+    overwrite_head = config["Global"].get("overwrite_head", False)
+    topk = config["Global"].get("topk", None)
     logger = get_logger()
     path = maybe_download_params(path)
     if path.endswith(".pdparams"):
@@ -200,18 +202,27 @@ def load_pretrained_params(model, path, handle_mismatch=False):
                 params[k1] = params[k1].astype(state_dict[k1].dtype)
             if list(state_dict[k1].shape) == list(params[k1].shape):
                 new_state_dict[k1] = params[k1]
-            elif handle_mismatch:
+            elif overwrite_head:
                 logger.warning(
                     "The shape of pretrained param {} {} does not match model param {} {}. Will try to copy overlapping dims.".format(
                         k1, params[k1].shape, k1, state_dict[k1].shape
                     )
                 )
                 overlap_dim = min(params[k1].shape[-1], state_dict[k1].shape[-1])
+                if not topk:
+                    topk = overlap_dim
                 new_state_dict[k1] = state_dict[k1].clone()
                 if params[k1].ndim > 1:
-                    new_state_dict[k1][:, :overlap_dim] = params[k1]
+                    new_state_dict[k1][:, :topk] = params[k1]
                 else:
-                    new_state_dict[k1][:overlap_dim] = params[k1]
+                    new_state_dict[k1][:topk] = params[k1]
+                
+                if state_dict[k1].shape[-1] > topk:  # If model has more dimensions than copied
+                    if params[k1].ndim > 1:
+                        new_state_dict[k1][:, -1] = params[k1][:, -1]  # Copy pretrained blank token weights to last column
+                    else:
+                        new_state_dict[k1][-1] = params[k1][-1]  # Copy pretrained blank token weight to last element
+                
             else:
                 logger.warning(
                     "The shape of model params {} {} not matched with loaded params {} {} !".format(
