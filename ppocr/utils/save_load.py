@@ -218,12 +218,6 @@ def load_pretrained_params(model, path, config=None):
                     new_state_dict[k1][:, :topk] = params[k1][:, :topk]
                 else:
                     new_state_dict[k1][:topk] = params[k1][:topk]
-                
-                if params[k1].ndim > 1:
-                    new_state_dict[k1][:, -1] = params[k1][:, -1]  # Copy pretrained blank token weights to last column
-                else:
-                    new_state_dict[k1][-1] = params[k1][-1]  # Copy pretrained blank token weight to last element
-            
             else:
                 logger.warning(
                     "The shape of model params {} {} not matched with loaded params {} {} !".format(
