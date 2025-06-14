@@ -110,8 +110,8 @@ class RecMetric(object):
             "acc": correct_num / (all_num + self.eps),
             "char_acc": correct_char_num / (all_char_num + self.eps),
             "norm_edit_dis": 1 - norm_edit_dis / (all_num + self.eps),
-            "corr_rate": 1 - corr_rate / (all_num + self.eps),
-            "acc_rate": 1 - acc_rate / (all_num + self.eps),
+            "corr_rate": corr_rate / (all_num + self.eps),
+            "acc_rate": acc_rate / (all_num + self.eps),
         }
 
     def get_metric(self):
@@ -124,8 +124,8 @@ class RecMetric(object):
         acc = 1.0 * self.correct_num / (self.all_num + self.eps)
         char_acc = 1.0 * self.correct_char_num / (self.all_char_num + self.eps)
         norm_edit_dis = 1 - self.norm_edit_dis / (self.all_num + self.eps)
-        corr_rate = 1 - self.corr_rate / (self.all_num + self.eps)
-        acc_rate = 1 - self.acc_rate / (self.all_num + self.eps)
+        corr_rate = self.corr_rate / (self.all_num + self.eps)
+        acc_rate = self.acc_rate / (self.all_num + self.eps)
         self.reset()
         return {
             "acc": acc,
