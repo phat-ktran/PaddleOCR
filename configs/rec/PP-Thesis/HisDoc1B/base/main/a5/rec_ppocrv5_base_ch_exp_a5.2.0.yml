@@ -50,7 +50,7 @@ Architecture:
   algorithm: Distillation
   Models:
     Teacher:
-      pretrained: ./output/rec_svtrnet_base_ch_exp_a5.1.0/
+      pretrained: ./output/rec_svtrnet_base_ch_exp_a5.1.0/best_accuracy
       freeze_params: true
       return_all_feats: true
       model_type: rec
