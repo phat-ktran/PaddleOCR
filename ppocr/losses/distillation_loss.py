@@ -580,7 +580,7 @@ class DistillationDKDLoss(DKDLoss):
                         out1[self.dis_head], out2[self.dis_head], tgt, non_pad_mask
                     )  # [batch_size, max_len + 1, num_char]
                 else:
-                    loss = super().forward(out1, out2)
+                    loss = super().forward(out1, out2, batch)
                 if isinstance(loss, dict):
                     for key in loss:
                         loss_dict["{}_{}_{}_{}".format(key, pair[0], pair[1], idx)] = (
