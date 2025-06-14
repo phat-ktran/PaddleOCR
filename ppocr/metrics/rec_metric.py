@@ -38,12 +38,47 @@ class RecMetric(object):
             filter(lambda x: x in (string.digits + string.ascii_letters), text)
         )
         return text.lower()
+        
+        
+    def _correct_rate(self, pred: str, target: str) -> float:
+        """
+        Correct rate CR = (N_t - D_e - S_e) / N_t,
+        where N_t = len(target), D_e = deletions, S_e = substitutions.
+        Insertions are NOT counted.
+        """
+        Nt = len(target)
+        # Edge-case: empty ground-truth
+        if Nt == 0:
+            # define CR = 1.0 if both are empty (no errors), else 0.0
+            return 1.0 if len(pred) == 0 else 0.0
+    
+        # weights = (ins_cost, del_cost, sub_cost)
+        ds_es = Levenshtein.distance(pred, target, weights=(0, 1, 1))
+        return (Nt - ds_es) / Nt
+
+    def _accurate_rate(self, pred: str, target: str) -> float:
+        """
+        Accurate rate AR = (N_t - D_e - S_e - I_e) / N_t,
+        i.e. count all three error types equally.
+        """
+        Nt = len(target)
+        # Edge-case: empty ground-truth
+        if Nt == 0:
+            # if both empty, perfect; if prediction non-empty,
+            # there are pure insertions → AR → −∞ in principle,
+            # but here we choose to return a large negative number
+            return 1.0 if len(pred) == 0 else float('-inf')
+    
+        total_errors = Levenshtein.distance(pred, target, weights=(1, 1, 1))
+        return (Nt - total_errors) / Nt
 
     def __call__(self, pred_label, *args, **kwargs):
         preds, labels = pred_label
         correct_num, correct_char_num = 0, 0
         all_num, all_char_num = 0, 0
         norm_edit_dis = 0.0
+        corr_rate = 0.0
+        acc_rate = 0.0
         for (pred, pred_conf), (target, _) in zip(preds, labels):
             if self.ignore_space:
                 pred = pred.replace(" ", "")
@@ -52,6 +87,8 @@ class RecMetric(object):
                 pred = self._normalize_text(pred)
                 target = self._normalize_text(target)
             norm_edit_dis += Levenshtein.normalized_distance(pred, target)
+            corr_rate += self._correct_rate(pred, target)
+            acc_rate += self._accurate_rate(pred, target)
             if pred == target:
                 correct_num += 1
             max_len = max(len(target), len(pred))
@@ -67,10 +104,14 @@ class RecMetric(object):
         self.all_num += all_num
         self.all_char_num += all_char_num
         self.norm_edit_dis += norm_edit_dis
+        self.corr_rate += corr_rate
+        self.acc_rate += acc_rate
         return {
             "acc": correct_num / (all_num + self.eps),
             "char_acc": correct_char_num / (all_char_num + self.eps),
             "norm_edit_dis": 1 - norm_edit_dis / (all_num + self.eps),
+            "corr_rate": 1 - corr_rate / (all_num + self.eps),
+            "acc_rate": 1 - acc_rate / (all_num + self.eps),
         }
 
     def get_metric(self):
@@ -83,8 +124,16 @@ class RecMetric(object):
         acc = 1.0 * self.correct_num / (self.all_num + self.eps)
         char_acc = 1.0 * self.correct_char_num / (self.all_char_num + self.eps)
         norm_edit_dis = 1 - self.norm_edit_dis / (self.all_num + self.eps)
+        corr_rate = 1 - self.corr_rate / (self.all_num + self.eps)
+        acc_rate = 1 - self.acc_rate / (self.all_num + self.eps)
         self.reset()
-        return {"acc": acc, "char_acc": char_acc, "norm_edit_dis": norm_edit_dis}
+        return {
+            "acc": acc,
+            "char_acc": char_acc,
+            "norm_edit_dis": norm_edit_dis,
+            "corr_rate": corr_rate,
+            "acc_rate": acc_rate,
+        }
 
     def reset(self):
         self.correct_num = 0
@@ -92,6 +141,8 @@ class RecMetric(object):
         self.all_num = 0
         self.all_char_num = 0
         self.norm_edit_dis = 0
+        self.corr_rate = 0
+        self.acc_rate = 0
 
 
 class MaskedRecMetric(object):
