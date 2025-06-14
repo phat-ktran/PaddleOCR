@@ -174,9 +174,11 @@ def load_model(config, model, optimizer=None, model_type="det"):
     return best_model_dict
 
 
-def load_pretrained_params(model, path, config):
-    overwrite_head = config["Global"].get("overwrite_head", False)
-    topk = config["Global"].get("topk", None)
+def load_pretrained_params(model, path, config=None):
+    overwrite_head, topk = False, None
+    if config:
+        overwrite_head = config["Global"].get("overwrite_head", False)
+        topk = config["Global"].get("topk", None)
     logger = get_logger()
     path = maybe_download_params(path)
     if path.endswith(".pdparams"):
