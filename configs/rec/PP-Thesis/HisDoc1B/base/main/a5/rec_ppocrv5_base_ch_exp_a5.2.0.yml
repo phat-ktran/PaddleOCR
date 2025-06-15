@@ -1,7 +1,6 @@
 Global:
-  model_name: PPHGNetV2_B4 # To use static model for inference.
-  debug: false
-  use_gpu: true
+  debug: true
+  use_gpu: false
   epoch_num: 20
   distributed: true
   eval_batch_step: [0, 4991]
@@ -26,12 +25,12 @@ Global:
   use_space_char: false
   max_text_length: &max_text_length 40
   use_amp: true
-  use_wandb: true
+  # use_wandb: true
 
-wandb:
-  project: "HisDoc1B-5M"
-  entity: "trankim147-vnu-hcmus"
-  name: "A5.2.0"
+# wandb:
+#   project: "HisDoc1B-5M"
+#   entity: "trankim147-vnu-hcmus"
+#   name: "A5.2.0"
 
 Optimizer:
   name: Adam
@@ -113,6 +112,8 @@ Architecture:
     Student:
       pretrained: https://paddle-model-ecology.bj.bcebos.com/paddlex/official_pretrained_model/PP-OCRv5_server_rec_pretrained.pdparams
       freeze_params: false
+      mapped_key_prefixes:
+        "head.ctc_encoder": "neck"
       return_all_feats: true
       model_type: rec
       algorithm: SVTR_HGNet
@@ -167,6 +168,7 @@ Loss:
           - - Student
             - Teacher
         key: head_out
+        inner_key: null
 
 PostProcess:
   name: DistillationCTCLabelDecode

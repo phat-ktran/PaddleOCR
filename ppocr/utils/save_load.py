@@ -174,11 +174,12 @@ def load_model(config, model, optimizer=None, model_type="det"):
     return best_model_dict
 
 
-def load_pretrained_params(model, path, config=None):
+def load_pretrained_params(model, path, config):
     overwrite_head, topk = False, None
-    if config:
+    if "Global" in config:
         overwrite_head = config["Global"].get("overwrite_head", False)
         topk = config["Global"].get("topk", None)
+    mapped_key_prefixes = config.get("mapped_key_prefixes", None)
     logger = get_logger()
     path = maybe_download_params(path)
     if path.endswith(".pdparams"):
@@ -190,34 +191,46 @@ def load_pretrained_params(model, path, config=None):
     params = paddle.load(path + ".pdparams")
 
     state_dict = model.state_dict()
-
     new_state_dict = {}
     is_float16 = False
-
     for k1 in params.keys():
-        if k1 not in state_dict.keys():
-            logger.warning("The pretrained params {} not in model".format(k1))
+        not_found = k1 not in state_dict.keys()
+        k1_mapped = k1
+        
+        if mapped_key_prefixes and not_found:
+            # Check if k1 has any of the supported prefixes
+            for prefix in mapped_key_prefixes:
+                if k1.startswith(prefix):
+                    # Try mapping to a different prefix
+                    mapped_prefix = mapped_key_prefixes[prefix]
+                    k1_mapped = k1.replace(prefix, mapped_prefix, 1)
+                    not_found = k1_mapped not in state_dict
+                    if not not_found:
+                        break
+            
+        if not_found:
+            logger.warning("The pretrained params {} not in model".format(k1_mapped))
         else:
             if params[k1].dtype == paddle.float16:
                 is_float16 = True
-            if params[k1].dtype != state_dict[k1].dtype:
-                params[k1] = params[k1].astype(state_dict[k1].dtype)
-            if list(state_dict[k1].shape) == list(params[k1].shape):
-                new_state_dict[k1] = params[k1]
+            if params[k1].dtype != state_dict[k1_mapped].dtype:
+                params[k1_mapped] = params[k1].astype(state_dict[k1_mapped].dtype)
+            if list(state_dict[k1_mapped].shape) == list(params[k1].shape):
+                new_state_dict[k1_mapped] = params[k1]
             elif overwrite_head:
                 logger.warning(
                     "The shape of pretrained param {} {} does not match model param {} {}. Will try to copy overlapping dims.".format(
-                        k1, params[k1].shape, k1, state_dict[k1].shape
+                        k1, params[k1].shape, k1, state_dict[k1_mapped].shape
                     )
                 )
-                overlap_dim = min(params[k1].shape[-1], state_dict[k1].shape[-1])
+                overlap_dim = min(params[k1].shape[-1], state_dict[k1_mapped].shape[-1])
                 if not topk:
                     topk = overlap_dim
-                new_state_dict[k1] = state_dict[k1].clone()
+                new_state_dict[k1_mapped] = state_dict[k1_mapped].clone()
                 if params[k1].ndim > 1:
-                    new_state_dict[k1][:, :topk] = params[k1][:, :topk]
+                    new_state_dict[k1_mapped][:, :topk] = params[k1][:, :topk]
                 else:
-                    new_state_dict[k1][:topk] = params[k1][:topk]
+                    new_state_dict[k1_mapped][:topk] = params[k1][:topk]
             else:
                 logger.warning(
                     "The shape of model params {} {} not matched with loaded params {} {} !".format(
