@@ -118,15 +118,8 @@ Metric:
 
 Train:
   dataset:
-    name: SimpleDataSet
-    data_dir: ./train_data/
-    label_file_list:
-      - ./train_data/ihr-train.txt
-      - ./train_data/ihr-val.txt
-      - ./train_data/kinh_su_tu.txt
-      - ./train_data/nomna-train.txt
-      - ./train_data/hisdoc1b_500k.txt
-      - ./train_data/all.txt
+    name: LMDBDataSet
+    data_dir: ./train_data/rec
     ext_op_transform_idx: 1
     transforms:
       - DecodeImage:
@@ -160,10 +153,8 @@ Train:
 
 Eval:
   dataset:
-    name: SimpleDataSet
-    data_dir: ./train_data/
-    label_file_list:
-      - ./train_data/nomna-validate.txt
+    name: LMDBDataSet
+    data_dir: ./train_data/rec
     transforms:
       - DecodeImage:
           img_mode: BGR
