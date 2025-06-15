@@ -119,7 +119,7 @@ Metric:
 Train:
   dataset:
     name: LMDBDataSet
-    data_dir: ./train_data/rec
+    data_dir: ./train_data/rec/train
     ext_op_transform_idx: 1
     transforms:
       - DecodeImage:
@@ -154,7 +154,7 @@ Train:
 Eval:
   dataset:
     name: LMDBDataSet
-    data_dir: ./train_data/rec
+    data_dir: ./train_data/rec/val
     transforms:
       - DecodeImage:
           img_mode: BGR
