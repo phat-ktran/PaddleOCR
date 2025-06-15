@@ -1,6 +1,6 @@
 Global:
-  debug: true
-  use_gpu: false
+  debug: false
+  use_gpu: true
   epoch_num: 20
   distributed: true
   eval_batch_step: [0, 4991]
@@ -25,12 +25,12 @@ Global:
   use_space_char: false
   max_text_length: &max_text_length 40
   use_amp: true
-  # use_wandb: true
+  use_wandb: true
 
-# wandb:
-#   project: "HisDoc1B-5M"
-#   entity: "trankim147-vnu-hcmus"
-#   name: "A5.2.0"
+wandb:
+  project: "HisDoc1B-5M"
+  entity: "trankim147-vnu-hcmus"
+  name: "A5.2.0"
 
 Optimizer:
   name: Adam
