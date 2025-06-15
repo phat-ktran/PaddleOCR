@@ -27,7 +27,7 @@ Global:
 wandb:
   project: "Sino-Nom"
   entity: "trankim147-vnu-hcmus"
-  name: "B1.1.0.1"
+  name: "B1.1.0.2"
 
 Optimizer:
   name: AdamW
