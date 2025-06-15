@@ -9,11 +9,7 @@ Global:
   save_model_dir: ./output/rec_svtrnet_base_nom_exp_b1.1.0.1/
   save_epoch_step: 1
   eval_batch_step: [0, 4882]
-  cal_metric_during_train: true
-
-  overwrite_head: true
-  topk: 16000
-  
+  cal_metric_during_train: true  
   pretrained_model: ./output/rec_svtrnet_base_ch_exp_a5.1.0/best_accuracy
   checkpoints: null
   character_dict_path: ./ppocr/utils/dict/PP-Thesis/hisdoc1b_16k_nom_all.txt
@@ -130,6 +126,7 @@ Train:
       - ./train_data/kinh_su_tu.txt
       - ./train_data/nomna-train.txt
       - ./train_data/hisdoc1b_500k.txt
+      - ./train_data/all.txt
     ext_op_transform_idx: 1
     transforms:
       - DecodeImage:
