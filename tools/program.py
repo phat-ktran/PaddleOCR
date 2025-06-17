@@ -243,8 +243,6 @@ def train(
             )
         )
     save_epoch_step = config["Global"]["save_epoch_step"]
-    save_iter_step = config["Global"].get("save_iter_step", None)
-    assert not save_iter_step or isinstance(save_iter_step, int), "save_iter_step must be an integer"
     save_model_dir = config["Global"]["save_model_dir"]
     if not os.path.exists(save_model_dir):
         os.makedirs(save_model_dir)
@@ -467,9 +465,7 @@ def train(
                             
             if(
                 dist.get_rank() == 0 and 
-                save_iter_step and 
-                not global_step % max_iter == 0 and
-                global_step % save_iter_step == 0
+                not global_step % max_iter == 0
             ):
                 prefix = "iter_step_{}".format(global_step)
                 if uniform_output_enabled:
