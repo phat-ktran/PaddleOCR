@@ -462,46 +462,6 @@ def train(
             stats["lr"] = lr
             train_stats.update(stats)
             
-                            
-            if(
-                dist.get_rank() == 0 and 
-                not global_step % max_iter == 0
-            ):
-                prefix = "iter_step_{}".format(global_step)
-                if uniform_output_enabled:
-                    export(config, model, os.path.join(save_model_dir, prefix, "inference"))
-                    gc.collect()
-                    model_info = {"steps": global_step, "metric": best_model_dict}
-                else:
-                    model_info = None
-                save_model(
-                    model,
-                    optimizer,
-                    (
-                        os.path.join(save_model_dir, prefix)
-                        if uniform_output_enabled
-                        else save_model_dir
-                    ),
-                    logger,
-                    config,
-                    is_best=False,
-                    prefix=prefix,
-                    save_model_info=model_info,
-                    best_model_dict=best_model_dict,
-                    epoch=epoch-1,
-                    global_step=global_step,
-                    done_flag=epoch == config["Global"]["epoch_num"],
-                    push_to_hub=push_to_hub,
-                    hf_token=hf_token,
-                    repo_id=repo_id,
-                    repo_type=repo_type,
-                    ignore_patterns=ignore_patterns,
-                    run_as_future=run_as_future
-                )
-                if log_writer is not None:
-                    log_writer.log_model(
-                        is_best=False, prefix="iter_step_{}".format(global_step)
-                    )
 
             if log_writer is not None and dist.get_rank() == 0:
                 log_writer.log_metrics(
