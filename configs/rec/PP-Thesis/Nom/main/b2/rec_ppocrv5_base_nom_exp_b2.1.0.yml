@@ -2,7 +2,7 @@ Global:
   model_name: PPHGNetV2_B4 # To use static model for inference.
   debug: false
   use_gpu: true
-  epoch_num: 20
+  epoch_num: 400
   distributed: true
   eval_batch_step: [10000, 2500]
   log_smooth_window: 20
