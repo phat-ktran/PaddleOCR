@@ -97,11 +97,12 @@ Metric:
 
 Train:
   dataset:
-    name: SimpleDataSet
+    name: MultiScaleDataSet
+    ds_width: false
     data_dir: ./train_data/
+    ext_op_transform_idx: 1
     label_file_list:
       - ./train_data/nomna-train.txt
-    ext_op_transform_idx: 1
     transforms:
       - DecodeImage:
           img_mode: BGR
