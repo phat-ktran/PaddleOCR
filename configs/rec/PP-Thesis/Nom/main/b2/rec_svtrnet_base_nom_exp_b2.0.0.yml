@@ -7,7 +7,7 @@ Global:
   log_smooth_window: 20
   print_batch_step: 10
   save_model_dir: ./output/rec_svtrnet_base_nom_exp_b2.0.0/
-  save_epoch_step: 1
+  save_epoch_step: 10
   eval_batch_step: [0, 4882]
   cal_metric_during_train: true
 
@@ -39,7 +39,7 @@ Optimizer:
   one_dim_param_no_weight_decay: True
   lr:
     name: Cosine
-    learning_rate: 0.0005
+    learning_rate: 0.001
     warmup_epoch: 5
 
 Architecture:
@@ -149,7 +149,7 @@ Train:
             - length
   loader:
     shuffle: true
-    batch_size_per_card: 32
+    batch_size_per_card: 96
     drop_last: true
     num_workers: 16
 
