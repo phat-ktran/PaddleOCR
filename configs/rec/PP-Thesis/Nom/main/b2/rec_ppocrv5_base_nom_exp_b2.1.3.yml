@@ -2,7 +2,7 @@ Global:
   model_name: PPHGNetV2_B4 # To use static model for inference.
   debug: false
   use_gpu: true
-  epoch_num: 20
+  epoch_num: 30
   distributed: true
   eval_batch_step: [5352,669]
   log_smooth_window: 20
@@ -40,7 +40,7 @@ Optimizer:
   beta2: 0.999
   lr:
     name: Cosine
-    learning_rate: 0.0005
+    learning_rate: 0.001
     warmup_epoch: 5
   regularizer:
     name: L2
@@ -121,7 +121,7 @@ Train:
   sampler:
     name: MultiScaleSampler
     scales: [[480, 32], [480, 48], [480, 64]]
-    first_bs: &bs 64
+    first_bs: &bs 128
     fix_bs: false
     divided_factor: [8, 16] # w, h
     is_training: True
@@ -155,5 +155,5 @@ Eval:
   loader:
     shuffle: false
     drop_last: false
-    batch_size_per_card: 128
+    batch_size_per_card: 384
     num_workers: 12
