@@ -785,7 +785,15 @@ def eval(
             pbar.update(1)
             total_frame += len(images)
             sum_images += 1
+<<<<<<< Updated upstream
 
+=======
+            
+            del preds, images, batch_numpy
+            paddle.device.cuda.empty_cache()
+            gc.collect() 
+        # Get final metric，eg. acc or hmean
+>>>>>>> Stashed changes
         metric = eval_class.get_metric()
 
     pbar.close()
