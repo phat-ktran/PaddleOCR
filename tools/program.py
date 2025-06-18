@@ -787,8 +787,8 @@ def eval(
             sum_images += 1
             
             del preds, images, batch_numpy
-            paddle.device.cuda.empty_cache()
-            gc.collect() 
+        paddle.device.cuda.empty_cache()
+        gc.collect() 
 
         metric = eval_class.get_metric()
 
