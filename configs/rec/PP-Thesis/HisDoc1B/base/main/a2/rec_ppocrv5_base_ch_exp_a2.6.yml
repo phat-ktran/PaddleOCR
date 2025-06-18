@@ -1,0 +1,148 @@
+Global:
+  model_name: PPHGNetV2_B4 # To use static model for inference.
+  debug: false
+  use_gpu: true
+  epoch_num: 15
+  distributed: true
+  eval_batch_step: [10000, 2000]
+  log_smooth_window: 20
+  print_batch_step: 10
+  save_model_dir: ./output/rec_ppocrv5_base_ch_exp_a2.6
+  save_epoch_step: 1
+  save_iter_step: 5000 # save checkpoints every 5000 iterations
+  cal_metric_during_train: true
+  calc_epoch_interval: 1
+  
+  # vanish gradient combat
+  log_grad_norm: true
+  grad_scale_factor: 1.0
+  use_dynamic_loss_scaling: true
+  scale_loss: 32768
+  #########################
+  
+  pretrained_model: https://paddle-model-ecology.bj.bcebos.com/paddlex/official_pretrained_model/PP-OCRv5_server_rec_pretrained.pdparams
+  checkpoints: null
+  character_dict_path: ./ppocr/utils/dict/PP-Thesis/hisdoc1b.txt
+  save_inference_dir:
+  use_visualdl: false
+  infer_img: null
+  save_res_path: null
+  infer_mode: false
+  use_space_char: false
+  max_text_length: 40
+  use_amp: true
+  use_wandb: true
+  d2s_train_image_shape: [3, 32, 584]
+
+wandb:
+  project: "Rec-Pretraining"
+  entity: "trankim147-vnu-hcmus"
+  name: "A2.6"
+
+Optimizer:
+  name: Adam
+  beta1: 0.9
+  beta2: 0.999
+  lr:
+    name: LinearWarmupCosine
+    learning_rate: 0.001
+    warmup_steps: 12000
+  regularizer:
+    name: L2
+    factor: 1.0e-06
+
+Architecture:
+  model_type: rec
+  algorithm: SVTR_HGNet
+  Transform:
+  Backbone:
+    name: PPHGNetV2_B4
+    text_rec: True
+    stem_channels: [3, 32, 48]
+    out_char_num: 50 # for training mode
+    use_last_conv: True
+    class_expand: 512
+    out_avg_kernel_size: [4, 2] # for inference mode
+    stage_config_rec:
+      # in_channels, mid_channels, out_channels, num_blocks, is_downsample, light_block, kernel_size, layer_num, stride
+      stage1: [48, 48, 128, 1, False, False, 3, 6, [1, 1]]
+      stage2: [128, 96, 512, 1, True, False, 3, 6, [2, 1]]
+      stage3: [512, 192, 1024, 3, True, True, 5, 6, [1, 2]]
+      stage4: [1024, 384, 2048, 1, True, True, 5, 6, [2, 1]]
+  Neck:
+    name: SequenceEncoder
+    encoder_type: reshape
+  Head:
+    name: CTCHead
+    
+Loss:
+  name: CTCLoss
+  use_focal_loss: true
+
+PostProcess:
+  name: CTCLabelDecode
+
+Metric:
+  name: RecMetric
+  main_indicator: acc
+
+Train:
+  dataset:
+    name: LMDBDataSet
+    data_dir: ./train_data/rec/train
+    ext_op_transform_idx: 1
+    transforms:
+      - DecodeImage:
+          img_mode: BGR
+          channel_first: false
+      - RecConAug:
+          prob: 0.5
+          ext_data_num: 2
+          image_shape:
+            - 32
+            - 584
+            - 3
+      - RecAug:
+      - CTCLabelEncode: null
+      - SVTRRecResizeImg:
+          image_shape:
+            - 3
+            - 32
+            - 584
+          padding: true
+      - KeepKeys:
+          keep_keys:
+            - image
+            - label
+            - length
+  loader:
+    shuffle: true
+    batch_size_per_card: 128
+    drop_last: true
+    num_workers: 16
+
+Eval:
+  dataset:
+    name: LMDBDataSet
+    data_dir: ./train_data/rec/val
+    transforms:
+      - DecodeImage:
+          img_mode: BGR
+          channel_first: false
+      - CTCLabelEncode: null
+      - SVTRRecResizeImg:
+          image_shape:
+            - 3
+            - 32
+            - 584
+          padding: true
+      - KeepKeys:
+          keep_keys:
+            - image
+            - label
+            - length
+  loader:
+    shuffle: false
+    drop_last: false
+    batch_size_per_card: 384
+    num_workers: 12

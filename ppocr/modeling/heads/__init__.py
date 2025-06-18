@@ -30,6 +30,7 @@ def build_head(config):
     from .rec_att_head import AttentionHead
     from .rec_srn_head import SRNHead
     from .rec_nrtr_head import Transformer
+    from .rec_nomna_head import NomNaTransformer
     from .rec_sar_head import SARHead
     from .rec_aster_head import AsterHead
     from .rec_pren_head import PRENHead
@@ -68,6 +69,7 @@ def build_head(config):
         "SRNHead",
         "PGHead",
         "Transformer",
+        "NomNaTransformer",
         "TableAttentionHead",
         "SARHead",
         "AsterHead",

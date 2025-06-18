@@ -3,7 +3,6 @@ import paddle.distributed as dist
 
 import numpy as np
 import random
-import math
 
 
 class MultiScaleSampler(Sampler):
@@ -13,6 +12,7 @@ class MultiScaleSampler(Sampler):
         scales,
         first_bs=128,
         fix_bs=True,
+        bs_list=[],
         divided_factor=[8, 16],
         is_training=True,
         ratio_wh=0.8,
@@ -72,9 +72,11 @@ class MultiScaleSampler(Sampler):
 
             img_batch_pairs = list()
             base_elements = base_im_w * base_im_h * base_batch_size
-            for h, w in zip(height_dims, width_dims):
+            for idx, (h, w) in enumerate(zip(height_dims, width_dims)):
                 if fix_bs:
                     batch_size = base_batch_size
+                elif len(bs_list) == len(scales):
+                    batch_size = bs_list[idx]
                 else:
                     batch_size = int(max(1, (base_elements / (h * w))))
                 img_batch_pairs.append((w, h, batch_size))

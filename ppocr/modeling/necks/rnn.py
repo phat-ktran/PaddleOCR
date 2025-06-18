@@ -43,15 +43,24 @@ class Im2Seq(nn.Layer):
 
 
 class EncoderWithRNN(nn.Layer):
-    def __init__(self, in_channels, hidden_size):
+    def __init__(self, in_channels, hidden_size, cell_type="lstm", method="concat"):
         super(EncoderWithRNN, self).__init__()
-        self.out_channels = hidden_size * 2
-        self.lstm = nn.LSTM(
-            in_channels, hidden_size, direction="bidirectional", num_layers=2
-        )
+        assert method in ["concat", "add"], "Only supports Concatenate or Add for method."
+        self.method = method
+        self.out_channels = hidden_size * 2 if self.method == "concat" else hidden_size
+        if cell_type == "lstm":
+            self.cell = nn.LSTM(
+                in_channels, hidden_size, direction="bidirectional", num_layers=2
+            )
+        else:
+            self.cell = nn.GRU(
+                in_channels, hidden_size, direction="bidirectional", num_layers=2
+            )
 
     def forward(self, x):
-        x, _ = self.lstm(x)
+        x, _ = self.cell(x) # batch_size x T x (2 * hidden_size)
+        if self.method == "add":
+            x = x[:, :, :self.out_channels] + x[:, :, self.out_channels:]
         return x
 
 
@@ -237,6 +246,21 @@ class EncoderWithSVTR(nn.Layer):
         z = self.conv1x1(self.conv4(z))
         return z
 
+class EncoderWithNomNa(nn.Layer):
+    def __init__(self, in_channels, dim_feedforward, nhead, nlayers, act) -> None:
+        super().__init__()
+        self.out_channels = in_channels
+        self.encoder = nn.TransformerEncoder(
+            encoder_layer= nn.TransformerEncoderLayer(
+                d_model=in_channels,
+                nhead=nhead,
+                dim_feedforward=dim_feedforward,
+                activation=act,
+            ),
+            num_layers=nlayers
+        )
+    def forward(self, X: paddle.Tensor) -> paddle.Tensor:
+        return self.encoder(X)
 
 class SequenceEncoder(nn.Layer):
     def __init__(self, in_channels, encoder_type, hidden_size=48, **kwargs):
@@ -253,6 +277,7 @@ class SequenceEncoder(nn.Layer):
                 "rnn": EncoderWithRNN,
                 "svtr": EncoderWithSVTR,
                 "cascadernn": EncoderWithCascadeRNN,
+                "nomna": EncoderWithNomNa
             }
             assert encoder_type in support_encoder_dict, "{} must in {}".format(
                 encoder_type, support_encoder_dict.keys()
@@ -261,7 +286,7 @@ class SequenceEncoder(nn.Layer):
                 self.encoder = support_encoder_dict[encoder_type](
                     self.encoder_reshape.out_channels, **kwargs
                 )
-            elif encoder_type == "cascadernn":
+            elif encoder_type == "cascadernn" or encoder_type == "rnn":
                 self.encoder = support_encoder_dict[encoder_type](
                     self.encoder_reshape.out_channels, hidden_size, **kwargs
                 )

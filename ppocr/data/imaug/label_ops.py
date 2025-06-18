@@ -21,10 +21,8 @@ import os
 from enum import Enum
 import copy
 import numpy as np
-import string
 from shapely.geometry import LineString, Point, Polygon
 import json
-import copy
 import random
 from random import sample
 from collections import defaultdict
@@ -193,6 +191,36 @@ class CTCLabelEncode(BaseRecLabelEncode):
 
     def add_special_char(self, dict_character):
         dict_character = ["blank"] + dict_character
+        return dict_character
+
+
+class CTCLabelEncodeWithUnkToken(BaseRecLabelEncode):
+    def __init__(
+        self, max_text_length, character_dict_path=None, use_space_char=False, **kwargs
+    ):
+        super(CTCLabelEncodeWithUnkToken, self).__init__(
+            max_text_length, character_dict_path, use_space_char
+        )
+
+    def __call__(self, data):
+        text = data["label"]
+        text = self.encode(text)
+        if text is None:
+            return None
+        data["length"] = np.array(len(text))
+        text = text + [0] * (self.max_text_len - len(text))
+        mask = data["mask"]
+        for idx in mask:
+            text[idx] = self.dict["unk"]
+        data["label"] = np.array(text)
+        label = [0] * len(self.character)
+        for x in text:
+            label[x] += 1
+        data["label_ace"] = np.array(label)
+        return data
+
+    def add_special_char(self, dict_character):
+        dict_character = ["blank"] + dict_character + ["unk"]
         return dict_character
 
 
@@ -1062,7 +1090,6 @@ class VQATokenLabelEncode(object):
     def split_bbox(self, bbox, text, tokenizer):
         words = text.split()
         token_bboxes = []
-        curr_word_idx = 0
         x1, y1, x2, y2 = bbox
         unit_w = (x2 - x1) / len(text)
         for idx, word in enumerate(words):
@@ -1800,7 +1827,6 @@ class LatexOCRLabelEncode(object):
         return_length=False,
         verbose=True,
     ):
-
         if return_token_type_ids is None:
             return_token_type_ids = "token_type_ids" in self.model_input_names
         if return_attention_mask is None:
@@ -1916,7 +1942,6 @@ class PaddingStrategy(ExplicitEnum):
 
 
 class UniMERNetLabelEncode(object):
-
     SPECIAL_TOKENS_ATTRIBUTES = [
         "bos_token",
         "eos_token",
@@ -2112,7 +2137,6 @@ class UniMERNetLabelEncode(object):
         return_length=False,
         verbose=True,
     ):
-
         if return_token_type_ids is None:
             return_token_type_ids = "token_type_ids" in self.model_input_names
         if return_attention_mask is None:

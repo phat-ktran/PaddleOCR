@@ -20,6 +20,9 @@ import errno
 import os
 import pickle
 import json
+from packaging import version
+
+from huggingface_hub import HfApi
 
 import paddle
 
@@ -35,6 +38,15 @@ except ImportError:
     encrypted = False  # Encryption is not needed if the module cannot be imported
 
 __all__ = ["load_model"]
+
+
+# just to determine the inference model file format
+def get_FLAGS_json_format_model():
+    # json format by default
+    return os.environ.get("FLAGS_json_format_model", "1").lower() in ("1", "true", "t")
+
+
+FLAGS_json_format_model = get_FLAGS_json_format_model()
 
 
 def _mkdir_if_not_exist(path, logger):
@@ -61,6 +73,7 @@ def load_model(config, model, optimizer=None, model_type="det"):
     global_config = config["Global"]
     checkpoints = global_config.get("checkpoints")
     pretrained_model = global_config.get("pretrained_model")
+    handle_mismatch = global_config.get("handle_mismatch", False)
     best_model_dict = {}
     is_float16 = False
     is_nlp_model = model_type == "kie" and config["Architecture"]["algorithm"] not in [
@@ -100,9 +113,9 @@ def load_model(config, model, optimizer=None, model_type="det"):
     if checkpoints:
         if checkpoints.endswith(".pdparams"):
             checkpoints = checkpoints.replace(".pdparams", "")
-        assert os.path.exists(
-            checkpoints + ".pdparams"
-        ), "The {}.pdparams does not exists!".format(checkpoints)
+        assert os.path.exists(checkpoints + ".pdparams"), (
+            "The {}.pdparams does not exists!".format(checkpoints)
+        )
 
         # load params from trained model
         params = paddle.load(checkpoints + ".pdparams")
@@ -150,41 +163,74 @@ def load_model(config, model, optimizer=None, model_type="det"):
             best_model_dict["acc"] = 0.0
             if "epoch" in states_dict:
                 best_model_dict["start_epoch"] = states_dict["epoch"] + 1
+            if "global_step" in states_dict:
+                best_model_dict["global_step"] = states_dict["global_step"]
         logger.info("resume from {}".format(checkpoints))
     elif pretrained_model:
-        is_float16 = load_pretrained_params(model, pretrained_model)
+        is_float16 = load_pretrained_params(model, pretrained_model, config)
     else:
         logger.info("train from scratch")
     best_model_dict["is_float16"] = is_float16
     return best_model_dict
 
 
-def load_pretrained_params(model, path):
+def load_pretrained_params(model, path, config):
+    overwrite_head, topk = False, None
+    if "Global" in config:
+        overwrite_head = config["Global"].get("overwrite_head", False)
+        topk = config["Global"].get("topk", None)
+    mapped_key_prefixes = config.get("mapped_key_prefixes", None)
     logger = get_logger()
     path = maybe_download_params(path)
     if path.endswith(".pdparams"):
         path = path.replace(".pdparams", "")
-    assert os.path.exists(
-        path + ".pdparams"
-    ), "The {}.pdparams does not exists!".format(path)
+    assert os.path.exists(path + ".pdparams"), (
+        "The {}.pdparams does not exists!".format(path)
+    )
 
     params = paddle.load(path + ".pdparams")
 
     state_dict = model.state_dict()
-
     new_state_dict = {}
     is_float16 = False
-
     for k1 in params.keys():
-        if k1 not in state_dict.keys():
-            logger.warning("The pretrained params {} not in model".format(k1))
+        not_found = k1 not in state_dict.keys()
+        k1_mapped = k1
+        
+        if mapped_key_prefixes and not_found:
+            # Check if k1 has any of the supported prefixes
+            for prefix in mapped_key_prefixes:
+                if k1.startswith(prefix):
+                    # Try mapping to a different prefix
+                    mapped_prefix = mapped_key_prefixes[prefix]
+                    k1_mapped = k1.replace(prefix, mapped_prefix, 1)
+                    not_found = k1_mapped not in state_dict
+                    if not not_found:
+                        break
+            
+        if not_found:
+            logger.warning("The pretrained params {} not in model".format(k1_mapped))
         else:
             if params[k1].dtype == paddle.float16:
                 is_float16 = True
-            if params[k1].dtype != state_dict[k1].dtype:
-                params[k1] = params[k1].astype(state_dict[k1].dtype)
-            if list(state_dict[k1].shape) == list(params[k1].shape):
-                new_state_dict[k1] = params[k1]
+            if params[k1].dtype != state_dict[k1_mapped].dtype:
+                params[k1_mapped] = params[k1].astype(state_dict[k1_mapped].dtype)
+            if list(state_dict[k1_mapped].shape) == list(params[k1].shape):
+                new_state_dict[k1_mapped] = params[k1]
+            elif overwrite_head:
+                logger.warning(
+                    "The shape of pretrained param {} {} does not match model param {} {}. Will try to copy overlapping dims.".format(
+                        k1, params[k1].shape, k1, state_dict[k1_mapped].shape
+                    )
+                )
+                overlap_dim = min(params[k1].shape[-1], state_dict[k1_mapped].shape[-1])
+                if not topk:
+                    topk = overlap_dim
+                new_state_dict[k1_mapped] = state_dict[k1_mapped].clone()
+                if params[k1].ndim > 1:
+                    new_state_dict[k1_mapped][:, :topk] = params[k1][:, :topk]
+                else:
+                    new_state_dict[k1_mapped][:topk] = params[k1][:topk]
             else:
                 logger.warning(
                     "The shape of model params {} {} not matched with loaded params {} {} !".format(
@@ -269,6 +315,43 @@ def save_model(
     else:
         logger.info("save model in {}".format(model_prefix))
 
+    push_to_hub = kwargs.pop("push_to_hub", False)
+    if push_to_hub:
+        try:
+            repo_id = kwargs.pop("repo_id", None)
+            repo_type = kwargs.pop("repo_type", None)
+            ignore_patterns = kwargs.pop("ignore_patterns", None)
+            run_as_future = kwargs.pop("run_as_future", None)
+            token = kwargs.pop("hf_token", None)
+            commit_message = kwargs.pop(
+                "commit_message",
+                f"Upload {prefix} model" + (" (best model)" if is_best else ""),
+            )
+    
+            if repo_id is None:
+                logger.warning("repo_id not provided, cannot push to Hugging Face Hub")
+                return
+    
+            # Initialize HF API
+            api = HfApi(token=token)
+    
+            # Push to Hub
+            logger.info(f"Pushing model to Hugging Face Hub: {repo_id}")
+            api.upload_folder(
+                folder_path=model_path,
+                repo_id=repo_id,
+                repo_type=repo_type,
+                ignore_patterns=ignore_patterns,
+                run_as_future=run_as_future,
+                commit_message=commit_message,
+            )
+    
+            logger.info(f"Model successfully pushed to HF Hub: {repo_id}")
+        except ImportError:
+            logger.warning("huggingface_hub not installed. Cannot push to Hub.")
+        except Exception as e:
+            logger.error(f"Failed to push to Hugging Face Hub: {str(e)}")
+
 
 def update_train_results(config, prefix, metric_info, done_flag=False, last_num=5):
     if paddle.distributed.get_rank() != 0:
@@ -279,13 +362,26 @@ def update_train_results(config, prefix, metric_info, done_flag=False, last_num=
         config["Global"]["save_model_dir"], "train_result.json"
     )
     save_model_tag = ["pdparams", "pdopt", "pdstates"]
-    save_inference_tag = ["inference_config", "pdmodel", "pdiparams", "pdiparams.info"]
+    paddle_version = version.parse(paddle.__version__)
+    if FLAGS_json_format_model or paddle_version >= version.parse("3.0.0"):
+        save_inference_files = {
+            "inference_config": "inference.yml",
+            "pdmodel": "inference.json",
+            "pdiparams": "inference.pdiparams",
+        }
+    else:
+        save_inference_files = {
+            "inference_config": "inference.yml",
+            "pdmodel": "inference.pdmodel",
+            "pdiparams": "inference.pdiparams",
+            "pdiparams.info": "inference.pdiparams.info",
+        }
     if os.path.exists(train_results_path):
         with open(train_results_path, "r") as fp:
             train_results = json.load(fp)
     else:
         train_results = {}
-        train_results["model_name"] = config["Global"]["pdx_model_name"]
+        train_results["model_name"] = config["Global"]["model_name"]
         label_dict_path = config["Global"].get("character_dict_path", "")
         if label_dict_path != "":
             label_dict_path = os.path.abspath(label_dict_path)
@@ -325,11 +421,9 @@ def update_train_results(config, prefix, metric_info, done_flag=False, last_num=
                     prefix,
                     f"{prefix}.{tag}" if tag != "pdstates" else f"{prefix}.states",
                 )
-        for tag in save_inference_tag:
-            train_results["models"]["best"][tag] = os.path.join(
-                prefix,
-                "inference",
-                f"inference.{tag}" if tag != "inference_config" else "inference.yml",
+        for key in save_inference_files:
+            train_results["models"]["best"][key] = os.path.join(
+                prefix, "inference", save_inference_files[key]
             )
     else:
         for i in range(last_num - 1, 0, -1):
@@ -360,11 +454,9 @@ def update_train_results(config, prefix, metric_info, done_flag=False, last_num=
                     prefix,
                     f"{prefix}.{tag}" if tag != "pdstates" else f"{prefix}.states",
                 )
-        for tag in save_inference_tag:
-            train_results["models"][f"last_{1}"][tag] = os.path.join(
-                prefix,
-                "inference",
-                f"inference.{tag}" if tag != "inference_config" else "inference.yml",
+        for key in save_inference_files:
+            train_results["models"][f"last_{1}"][key] = os.path.join(
+                prefix, "inference", save_inference_files[key]
             )
 
     with open(train_results_path, "w") as fp:

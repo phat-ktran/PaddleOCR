@@ -28,10 +28,12 @@ from .sast_postprocess import SASTPostProcess
 from .fce_postprocess import FCEPostProcess
 from .rec_postprocess import (
     CTCLabelDecode,
+    CTCLabelDecodeWithUnk,
     AttnLabelDecode,
     SRNLabelDecode,
     DistillationCTCLabelDecode,
     NRTRLabelDecode,
+    NomNaTransformerLabelDecode,
     SARLabelDecode,
     SEEDLabelDecode,
     PRENLabelDecode,
@@ -70,6 +72,7 @@ def build_post_process(config, global_config=None):
         "SASTPostProcess",
         "FCEPostProcess",
         "CTCLabelDecode",
+        "CTCLabelDecodeWithUnk",
         "AttnLabelDecode",
         "ClsPostProcess",
         "SRNLabelDecode",
@@ -78,6 +81,7 @@ def build_post_process(config, global_config=None):
         "TableLabelDecode",
         "DistillationDBPostProcess",
         "NRTRLabelDecode",
+        "NomNaTransformerLabelDecode",
         "SARLabelDecode",
         "SEEDLabelDecode",
         "VQASerTokenLayoutLMPostProcess",

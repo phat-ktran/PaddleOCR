@@ -25,7 +25,6 @@ from .basic_loss import DMLLoss, KLDivLoss, DKDLoss
 from .basic_loss import DistanceLoss
 from .basic_loss import LossFromOutput
 from .det_db_loss import DBLoss
-from .det_basic_loss import BalanceLoss, MaskL1Loss, DiceLoss
 from .vqa_token_layoutlm_loss import VQASerTokenLayoutLMLoss
 
 
@@ -580,7 +579,7 @@ class DistillationDKDLoss(DKDLoss):
                         out1[self.dis_head], out2[self.dis_head], tgt, non_pad_mask
                     )  # [batch_size, max_len + 1, num_char]
                 else:
-                    loss = super().forward(out1, out2)
+                    loss = super().forward(out1, out2, batch[1])
                 if isinstance(loss, dict):
                     for key in loss:
                         loss_dict["{}_{}_{}_{}".format(key, pair[0], pair[1], idx)] = (
@@ -1097,7 +1096,7 @@ class KLCTCLogits(nn.Layer):
         stu_out = paddle.sum(F.softmax(stu_out / self.t, axis=-1), axis=1)
         tea_out = paddle.sum(F.softmax(tea_out / self.t, axis=-1), axis=1)
         stu_out = paddle.log(stu_out)
-        bs = stu_out.shape[0]
+        stu_out.shape[0]
         loss = tea_out * (paddle.log(tea_out + self.eps) - stu_out)
         loss = paddle.sum(loss, axis=1) / loss.shape[0]
         return loss
@@ -1153,11 +1152,17 @@ class KLCTCLogits(nn.Layer):
 
 class DistillCTCLogits(KLCTCLogits):
     def __init__(
-        self, model_name_pairs=[], key=None, name="ctc_logits", reduction="mean"
+        self,
+        model_name_pairs=[],
+        key=None,
+        name="ctc_logits",
+        reduction="mean",
+        inner_key="ctc",
     ):
         super().__init__(reduction=reduction)
         self.model_name_pairs = self._check_model_name_pairs(model_name_pairs)
         self.key = key
+        self.inner_key = inner_key
         self.name = name
 
     def _check_model_name_pairs(self, model_name_pairs):
@@ -1177,8 +1182,11 @@ class DistillCTCLogits(KLCTCLogits):
             out2 = predicts[pair[1]]
 
             if self.key is not None:
-                out1 = out1[self.key]["ctc"]
-                out2 = out2[self.key]["ctc"]
+                out1 = out1[self.key]
+                out2 = out2[self.key]
+                if self.inner_key is not None:
+                    out1 = out1[self.inner_key]
+                    out2 = out2[self.inner_key]
 
             ctc_label = batch[1]
             loss = super().forward(out1, out2, ctc_label)

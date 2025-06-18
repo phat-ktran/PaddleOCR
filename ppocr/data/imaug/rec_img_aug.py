@@ -16,9 +16,7 @@ import math
 import cv2
 import numpy as np
 import random
-import copy
 from PIL import Image
-import PIL
 from .text_image_aug import tia_perspective, tia_stretch, tia_distort
 from .abinet_aug import (
     CVGeometry,

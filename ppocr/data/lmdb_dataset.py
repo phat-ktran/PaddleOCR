@@ -11,15 +11,22 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import gc
+from typing import List, Optional, Tuple
 import numpy as np
 import io
+import math
+import traceback
 import os
+import paddle
 from paddle.io import Dataset
 import lmdb
+import json
 import cv2
 import string
 import pickle
 from PIL import Image
+from collections import defaultdict
 
 from .imaug import transform, create_operators
 
@@ -31,10 +38,11 @@ class LMDBDataSet(Dataset):
         global_config = config["Global"]
         dataset_config = config[mode]["dataset"]
         loader_config = config[mode]["loader"]
-        batch_size = loader_config["batch_size_per_card"]
+        loader_config["batch_size_per_card"]
         data_dir = dataset_config["data_dir"]
         self.do_shuffle = loader_config["shuffle"]
-
+        self.seed = seed
+        self.read_mask = dataset_config.get("read_mask", False)
         self.lmdb_sets = self.load_hierarchical_lmdb_dataset(data_dir)
         logger.info("Initialize indexes of datasets:%s" % data_dir)
         self.data_idx_order_list = self.dataset_traversal()
@@ -98,6 +106,18 @@ class LMDBDataSet(Dataset):
             return None
         return imgori
 
+    def get_data_info(self, txn, index) -> Optional[Tuple[List[int], List[str]]]:
+        meta_key = "meta-%09d".encode() % index
+        meta = txn.get(meta_key)
+        if not meta:
+            return [], []
+        meta = pickle.loads(meta)
+        mask_lookup, translation = meta[4], meta[5]
+        mask = paddle.zeros([len(translation)], dtype="int64")
+        for idx in mask_lookup:
+            mask[idx] = 1
+        return mask, translation
+
     def get_ext_data(self):
         ext_data_num = 0
         for op in self.ops:
@@ -118,6 +138,9 @@ class LMDBDataSet(Dataset):
                 continue
             img, label = sample_info
             data = {"image": img, "label": label}
+            if self.read_mask:
+                info = self.get_data_info(self.lmdb_sets[lmdb_idx]["txn"], file_idx)
+                data["mask"], data["translation"] = info[0], info[1]
             data = transform(data, load_data_ops)
             if data is None:
                 continue
@@ -146,6 +169,9 @@ class LMDBDataSet(Dataset):
         img, label = sample_info
         data = {"image": img, "label": label}
         data["ext_data"] = self.get_ext_data()
+        if self.read_mask:
+            info = self.get_data_info(self.lmdb_sets[lmdb_idx]["txn"], file_idx)
+            data["mask"], data["translation"] = info[0], info[1]
         outs = transform(data, self.ops)
         if outs is None:
             return self.__getitem__(np.random.randint(self.__len__()))
@@ -153,6 +179,625 @@ class LMDBDataSet(Dataset):
 
     def __len__(self):
         return self.data_idx_order_list.shape[0]
+
+
+class UnifiedLMDBDataSet(LMDBDataSet):
+    def __init__(self, config, mode, logger, seed=None):
+        dataset_config = config[mode]["dataset"]
+        self.mode = mode
+        self.val_ids = dataset_config["val_ids"]
+        super(UnifiedLMDBDataSet, self).__init__(config, mode, logger, seed)
+
+    def dataset_traversal(self):
+        """
+        Build and return an N×2 array of [lmdb_idx, sample_idx]
+        but only includes/excludes box_ids per self.mode.
+        """
+        # Pre-convert to set for O(1) lookups if not already
+        with open(self.val_ids, "r") as f:
+            val_ids = json.load(f)
+        val_ids_set = set(val_ids)
+
+        # Pre-calculate total capacity to avoid list resizing
+        rows = []
+
+        # Cache filter mode checks
+        is_train_mode = self.mode == "Train"
+        is_val_mode = self.mode == "Eval"
+
+        for lmdb_idx, lmdb_set in self.lmdb_sets.items():
+            txn = lmdb_set["txn"]
+            num_samples = lmdb_set["num_samples"]
+
+            # Batch process samples to reduce function call overhead
+            for i in range(1, num_samples + 1):
+                # Load only the meta (fast, small)
+                meta = pickle.loads(txn.get(f"meta-{i:09d}".encode()))
+                box_id = meta[3]
+                is_val = box_id in val_ids_set
+
+                # Optimized filtering logic
+                if (
+                    (is_train_mode and not is_val)
+                    or (is_val_mode and is_val)
+                    or (not is_train_mode and not is_val_mode)
+                ):
+                    rows.append((lmdb_idx, i))
+
+        del val_ids_set
+        gc.collect()
+
+        # Use more efficient array creation
+        return np.fromiter(
+            (item for row in rows for item in row),
+            dtype=np.float64,
+            count=len(rows) * 2,
+        ).reshape(-1, 2)
+
+
+class CurriculumLMDBDataSet(Dataset):
+    def __init__(self, config, mode, logger, seed=None):
+        super(CurriculumLMDBDataSet, self).__init__()
+        self.current_epoch = 0
+        global_config = config["Global"]
+        dataset_config = config[mode]["dataset"]
+        loader_config = config[mode]["loader"]
+        data_dir = dataset_config["data_dir"]
+        self.logger = logger
+        self.length_steps = dataset_config.get("length_steps", [25, 30, 40])
+        self.stage_epochs = dataset_config.get("stage_epochs", [5, 5])
+        assert len(self.stage_epochs) - 1 == len(self.length_steps), (
+            "stage_epochs must less than length_steps by 1 unit"
+        )
+        self.do_shuffle = loader_config["shuffle"]
+        self.seed = seed
+        self.read_mask = dataset_config.get("read_mask", False)
+        self.lmdb_sets = self.load_hierarchical_lmdb_dataset(data_dir)
+        self.logger.info("Initialize indexs of datasets:%s" % data_dir)
+        self._prepare_stages()
+        self.data_idx_order_list = self.dataset_traversal()
+        if self.do_shuffle:
+            np.random.shuffle(self.data_idx_order_list)
+        self.ops = create_operators(dataset_config["transforms"], global_config)
+        self.ext_op_transform_idx = dataset_config.get("ext_op_transform_idx", 1)
+        ratio_list = dataset_config.get("ratio_list", [1.0])
+        self.need_reset = True in [x < 1 for x in ratio_list]
+
+    def load_hierarchical_lmdb_dataset(self, data_dir):
+        lmdb_sets = {}
+        dataset_idx = 0
+        for dirpath, dirnames, filenames in os.walk(data_dir + "/"):
+            if not dirnames:
+                env = lmdb.open(
+                    dirpath,
+                    max_readers=32,
+                    readonly=True,
+                    lock=False,
+                    readahead=False,
+                    meminit=False,
+                )
+                txn = env.begin(write=False)
+                num_samples = int(txn.get("num-samples".encode()))
+                lmdb_sets[dataset_idx] = {
+                    "dirpath": dirpath,
+                    "env": env,
+                    "txn": txn,
+                    "num_samples": num_samples,
+                }
+                dataset_idx += 1
+        return lmdb_sets
+
+    def _identify_stage(self):
+        return np.searchsorted(self.cum_epochs, self.current_epoch, side="right")
+
+    def _prepare_stages(self):
+        self.cum_epochs = np.cumsum(self.stage_epochs)
+        self.stage = -1
+        lmdb_num = len(self.lmdb_sets)
+        for lno in range(lmdb_num):
+            tmp_sample_num = self.lmdb_sets[lno]["num_samples"]
+            indices_per_length = defaultdict(list)
+            for idx in range(1, tmp_sample_num + 1):
+                length = self.get_lmdb_sample_length(self.lmdb_sets[lno]["txn"], idx)
+                if not length:
+                    continue
+                for length_step in self.length_steps:
+                    if length > length_step:
+                        continue
+                    indices_per_length[length_step].append(idx)
+                    break
+            self.lmdb_sets[lno]["indices_per_length"] = indices_per_length
+        total_indices_per_length = defaultdict(int)
+        for dataset_idx, dataset_info in self.lmdb_sets.items():
+            for length_step in self.length_steps:
+                total_indices_per_length[length_step] += len(
+                    dataset_info["indices_per_length"][length_step]
+                )
+
+        self.logger.info(
+            f"Total sum of indices_per_length across all datasets: "
+            f"{', '.join([f'{length_step}: {total_indices_per_length[length_step]}' for length_step in self.length_steps])}"
+        )
+
+    def get_lmdb_sample_length(self, txn, index):
+        label_key = "label-%09d".encode() % index
+        label = txn.get(label_key)
+        if label is None:
+            return None
+        return len(label.decode("utf-8"))
+
+    def dataset_traversal(self):
+        lmdb_num = len(self.lmdb_sets)
+        stage = self._identify_stage()
+        if stage == self.stage:
+            return self.data_idx_order_list
+        self.logger.info(
+            f"Transitioning to stage {stage} at epoch {self.current_epoch}"
+        )
+        self.stage = stage
+        max_len_idx = min(self.stage, len(self.length_steps) - 1)
+        total_sample_num = 0
+        for lno in range(lmdb_num):
+            for idx in range(0, max_len_idx + 1):
+                total_sample_num += len(
+                    self.lmdb_sets[lno]["indices_per_length"][self.length_steps[idx]]
+                )
+        self.logger.info(
+            f"Total samples at epoch {self.current_epoch}: {total_sample_num}"
+        )
+        data_idx_order_list = np.zeros((total_sample_num, 2))
+        beg_idx = 0
+        for lno in range(lmdb_num):
+            tmp_sample_num = 0
+            tmp_indices = []
+            for idx in range(0, max_len_idx + 1):
+                tmp_sample_num += len(
+                    self.lmdb_sets[lno]["indices_per_length"][self.length_steps[idx]]
+                )
+                tmp_indices.extend(
+                    self.lmdb_sets[lno]["indices_per_length"][self.length_steps[idx]]
+                )
+            end_idx = beg_idx + tmp_sample_num
+            data_idx_order_list[beg_idx:end_idx, 0] = lno
+            data_idx_order_list[beg_idx:end_idx, 1] = tmp_indices
+            beg_idx = beg_idx + tmp_sample_num
+        return data_idx_order_list
+
+    def set_epoch(self, epoch):
+        self.current_epoch = epoch
+        self.data_idx_order_list = self.dataset_traversal()
+
+    def get_img_data(self, value):
+        """get_img_data"""
+        if not value:
+            return None
+        imgdata = np.frombuffer(value, dtype="uint8")
+        if imgdata is None:
+            return None
+        imgori = cv2.imdecode(imgdata, 1)
+        if imgori is None:
+            return None
+        return imgori
+
+    def get_data_info(self, txn, index) -> Optional[Tuple[List[int], List[str]]]:
+        meta_key = "meta-%09d".encode() % index
+        meta = txn.get(meta_key)
+        if not meta:
+            return [], []
+        meta = pickle.loads(meta)
+        mask_lookup, translation = meta[4], meta[5]
+        mask = paddle.zeros([len(translation)], dtype="int64")
+        for idx in mask_lookup:
+            mask[idx] = 1
+        return mask, translation
+
+    def get_ext_data(self):
+        ext_data_num = 0
+        for op in self.ops:
+            if hasattr(op, "ext_data_num"):
+                ext_data_num = getattr(op, "ext_data_num")
+                break
+        load_data_ops = self.ops[: self.ext_op_transform_idx]
+        ext_data = []
+
+        while len(ext_data) < ext_data_num:
+            lmdb_idx, file_idx = self.data_idx_order_list[np.random.randint(len(self))]
+            lmdb_idx = int(lmdb_idx)
+            file_idx = int(file_idx)
+            sample_info = self.get_lmdb_sample_info(
+                self.lmdb_sets[lmdb_idx]["txn"], file_idx
+            )
+            if sample_info is None:
+                continue
+            img, label = sample_info
+            data = {"image": img, "label": label}
+            if self.read_mask:
+                info = self.get_data_info(self.lmdb_sets[lmdb_idx]["txn"], file_idx)
+                data["mask"], data["translation"] = info[0], info[1]
+            data = transform(data, load_data_ops)
+            if data is None:
+                continue
+            ext_data.append(data)
+        return ext_data
+
+    def get_lmdb_sample_info(self, txn, index):
+        label_key = "label-%09d".encode() % index
+        label = txn.get(label_key)
+        if label is None:
+            return None
+        label = label.decode("utf-8")
+        img_key = "image-%09d".encode() % index
+        imgbuf = txn.get(img_key)
+        return imgbuf, label
+
+    def __getitem__(self, idx):
+        lmdb_idx, file_idx = self.data_idx_order_list[idx]
+        lmdb_idx = int(lmdb_idx)
+        file_idx = int(file_idx)
+        sample_info = self.get_lmdb_sample_info(
+            self.lmdb_sets[lmdb_idx]["txn"], file_idx
+        )
+        if sample_info is None:
+            return self.__getitem__(np.random.randint(self.__len__()))
+        img, label = sample_info
+        data = {"image": img, "label": label}
+        data["ext_data"] = self.get_ext_data()
+        if self.read_mask:
+            info = self.get_data_info(self.lmdb_sets[lmdb_idx]["txn"], file_idx)
+            data["mask"], data["translation"] = info[0], info[1]
+        outs = transform(data, self.ops)
+        if outs is None:
+            return self.__getitem__(np.random.randint(self.__len__()))
+        return outs
+
+    def __len__(self):
+        return self.data_idx_order_list.shape[0]
+
+
+class MultiScaleLMDBDataSet(LMDBDataSet):
+    def __init__(self, config, mode, logger, seed=None):
+        super(MultiScaleLMDBDataSet, self).__init__(config, mode, logger, seed)
+        self.logger = logger
+
+        # Get dataset config
+        dataset_config = config[mode]["dataset"]
+
+        # Initialize variables for width-height ratio awareness
+        self.ds_width = dataset_config.get("ds_width", False)
+
+        # If using dynamic width, prepare ratios
+        if self.ds_width:
+            self.prepare_wh_ratio_data()
+
+    def prepare_wh_ratio_data(self):
+        """
+        Prepare width-height ratio data for dynamic scaling
+        This needs to collect ratio information from all LMDB entries
+        """
+        self.wh_ratio = []
+        self.wh_ratio_idx_map = []
+
+        # Iterate through all LMDB sets
+        for lmdb_idx in range(len(self.lmdb_sets)):
+            txn = self.lmdb_sets[lmdb_idx]["txn"]
+            num_samples = self.lmdb_sets[lmdb_idx]["num_samples"]
+
+            # Collect width-height ratios from all samples
+            for idx in range(1, num_samples + 1):
+                sample_info = self.get_lmdb_sample_info(txn, idx)
+                if sample_info is None:
+                    continue
+
+                img_buf, label = sample_info
+
+                # Get image dimensions
+                try:
+                    imgdata = np.frombuffer(img_buf, dtype="uint8")
+                    img = cv2.imdecode(imgdata, 1)
+                    h, w = img.shape[:2]
+                    ratio = float(w) / float(h)
+
+                    del img_buf, img
+                    gc.collect()
+
+                    # Store the ratio and corresponding index
+                    self.wh_ratio.append(ratio)
+                    self.wh_ratio_idx_map.append((lmdb_idx, idx))
+                except:
+                    continue
+
+        # Convert to numpy array for easier processing
+        self.wh_ratio = np.array(self.wh_ratio)
+        self.wh_ratio_sort = np.argsort(self.wh_ratio)
+
+    def resize_norm_img(self, data, imgW, imgH, padding=True):
+        """
+        Resize and normalize image according to target dimensions
+        """
+        img = data["image"]
+        h = img.shape[0]
+        w = img.shape[1]
+
+        if not padding:
+            resized_image = cv2.resize(
+                img, (imgW, imgH), interpolation=cv2.INTER_LINEAR
+            )
+            resized_w = imgW
+        else:
+            ratio = w / float(h)
+            if math.ceil(imgH * ratio) > imgW:
+                resized_w = imgW
+            else:
+                resized_w = int(math.ceil(imgH * ratio))
+            resized_image = cv2.resize(img, (resized_w, imgH))
+
+        resized_image = resized_image.astype("float32")
+
+        # Normalize image
+        resized_image = resized_image.transpose((2, 0, 1)) / 255
+        resized_image -= 0.5
+        resized_image /= 0.5
+
+        # Create padding
+        padding_im = np.zeros((3, imgH, imgW), dtype=np.float32)
+        padding_im[:, :, :resized_w] = resized_image
+        valid_ratio = min(1.0, float(resized_w / imgW))
+
+        data["image"] = padding_im
+        data["valid_ratio"] = valid_ratio
+        return data
+
+    def __getitem__(self, properties):
+        """
+        Get an item with specific width, height
+        properties is a tuple containing (width, height, index, wh_ratio)
+        """
+        img_height = properties[1]
+        idx = properties[2]
+
+        # Determine image width based on properties
+        if self.ds_width and len(properties) > 3 and properties[3] is not None:
+            wh_ratio = properties[3]
+            # Calculate width based on height and ratio
+            img_width = img_height * (
+                1 if int(round(wh_ratio)) == 0 else int(round(wh_ratio))
+            )
+
+            # Get the file index from sorted ratios
+            sorted_idx = self.wh_ratio_sort[idx]
+            lmdb_idx, file_idx = self.wh_ratio_idx_map[sorted_idx]
+        else:
+            # Use regular index ordering
+            lmdb_idx, file_idx = self.data_idx_order_list[idx]
+            img_width = properties[0]
+            wh_ratio = None
+
+        lmdb_idx = int(lmdb_idx)
+        file_idx = int(file_idx)
+
+        try:
+            # Get sample from LMDB
+            sample_info = self.get_lmdb_sample_info(
+                self.lmdb_sets[lmdb_idx]["txn"], file_idx
+            )
+
+            if sample_info is None:
+                raise Exception(f"Sample {file_idx} in LMDB {lmdb_idx} does not exist!")
+
+            img_buf, label = sample_info
+
+            data = {"image": img_buf, "label": label}
+
+            # Get external data if needed
+            data["ext_data"] = self.get_ext_data()
+
+            if self.read_mask:
+                info = self.get_data_info(self.lmdb_sets[lmdb_idx]["txn"], file_idx)
+                if not info:
+                    return self.__getitem__(np.random.randint(self.__len__()))
+                data["mask"], data["translation"] = info[0], info[1]
+
+            # Apply transformations except the last one
+            outs = transform(data, self.ops[:-1])
+
+            if outs is not None:
+                # Apply resize and normalization
+                outs = self.resize_norm_img(outs, img_width, img_height)
+                # Apply final transformation
+                outs = transform(outs, self.ops[-1:])
+
+        except Exception:
+            self.logger.error(
+                f"Error processing LMDB index {lmdb_idx}, file {file_idx}: {traceback.format_exc()}"
+            )
+            outs = None
+
+        if outs is None:
+            # During evaluation, we should fix the idx to get same results
+            # for many times of evaluation
+            rnd_idx = (idx + 1) % self.__len__()
+            return self.__getitem__([img_width, img_height, rnd_idx, wh_ratio])
+
+        return outs
+
+    def __len__(self):
+        if self.ds_width:
+            return len(self.wh_ratio)
+        else:
+            return super().__len__()
+
+
+class UnifiedMultiScaleLMDBDataSet(UnifiedLMDBDataSet):
+    def __init__(self, config, mode, logger, seed=None):
+        super(UnifiedMultiScaleLMDBDataSet, self).__init__(config, mode, logger, seed)
+        self.logger = logger
+
+        # Get dataset config
+        dataset_config = config[mode]["dataset"]
+
+        # Initialize variables for width-height ratio awareness
+        self.ds_width = dataset_config.get("ds_width", False)
+
+        # If using dynamic width, prepare ratios
+        if self.ds_width:
+            self.prepare_wh_ratio_data()
+
+    def prepare_wh_ratio_data(self):
+        """
+        Prepare width-height ratio data for dynamic scaling
+        This needs to collect ratio information from all LMDB entries
+        """
+        self.wh_ratio = []
+        self.wh_ratio_idx_map = []
+
+        # Iterate through all LMDB sets
+        for idx in range(len(self)):
+            lmdb_idx, file_idx = self.data_idx_order_list[idx]
+            lmdb_idx = int(lmdb_idx)
+            file_idx = int(file_idx)
+            sample_info = self.get_lmdb_sample_info(
+                self.lmdb_sets[lmdb_idx]["txn"], file_idx
+            )
+            if sample_info is None:
+                continue
+
+            img_buf, label = sample_info
+
+            # Get image dimensions
+            try:
+                imgdata = np.frombuffer(img_buf, dtype="uint8")
+                img = cv2.imdecode(imgdata, 1)
+                h, w = img.shape[:2]
+                ratio = float(w) / float(h)
+
+                del img_buf, img
+                gc.collect()
+
+                # Store the ratio and corresponding index
+                self.wh_ratio.append(ratio)
+                self.wh_ratio_idx_map.append((lmdb_idx, idx))
+            except:
+                continue
+
+        # Convert to numpy array for easier processing
+        self.wh_ratio = np.array(self.wh_ratio)
+        self.wh_ratio_sort = np.argsort(self.wh_ratio)
+
+    def resize_norm_img(self, data, imgW, imgH, padding=True):
+        """
+        Resize and normalize image according to target dimensions
+        """
+        img = data["image"]
+        h = img.shape[0]
+        w = img.shape[1]
+
+        if not padding:
+            resized_image = cv2.resize(
+                img, (imgW, imgH), interpolation=cv2.INTER_LINEAR
+            )
+            resized_w = imgW
+        else:
+            ratio = w / float(h)
+            if math.ceil(imgH * ratio) > imgW:
+                resized_w = imgW
+            else:
+                resized_w = int(math.ceil(imgH * ratio))
+            resized_image = cv2.resize(img, (resized_w, imgH))
+
+        resized_image = resized_image.astype("float32")
+
+        # Normalize image
+        resized_image = resized_image.transpose((2, 0, 1)) / 255
+        resized_image -= 0.5
+        resized_image /= 0.5
+
+        # Create padding
+        padding_im = np.zeros((3, imgH, imgW), dtype=np.float32)
+        padding_im[:, :, :resized_w] = resized_image
+        valid_ratio = min(1.0, float(resized_w / imgW))
+
+        data["image"] = padding_im
+        data["valid_ratio"] = valid_ratio
+        return data
+
+    def __getitem__(self, properties):
+        """
+        Get an item with specific width, height
+        properties is a tuple containing (width, height, index, wh_ratio)
+        """
+        img_height = properties[1]
+        idx = properties[2]
+
+        # Determine image width based on properties
+        if self.ds_width and len(properties) > 3 and properties[3] is not None:
+            wh_ratio = properties[3]
+            # Calculate width based on height and ratio
+            img_width = img_height * (
+                1 if int(round(wh_ratio)) == 0 else int(round(wh_ratio))
+            )
+
+            # Get the file index from sorted ratios
+            sorted_idx = self.wh_ratio_sort[idx]
+            lmdb_idx, file_idx = self.wh_ratio_idx_map[sorted_idx]
+        else:
+            # Use regular index ordering
+            lmdb_idx, file_idx = self.data_idx_order_list[idx]
+            img_width = properties[0]
+            wh_ratio = None
+
+        lmdb_idx = int(lmdb_idx)
+        file_idx = int(file_idx)
+
+        try:
+            # Get sample from LMDB
+            sample_info = self.get_lmdb_sample_info(
+                self.lmdb_sets[lmdb_idx]["txn"], file_idx
+            )
+
+            if sample_info is None:
+                raise Exception(f"Sample {file_idx} in LMDB {lmdb_idx} does not exist!")
+
+            img_buf, label = sample_info
+
+            data = {"image": img_buf, "label": label}
+
+            # Get external data if needed
+            data["ext_data"] = self.get_ext_data()
+
+            if self.read_mask:
+                info = self.get_data_info(self.lmdb_sets[lmdb_idx]["txn"], file_idx)
+                if not info:
+                    return self.__getitem__(np.random.randint(self.__len__()))
+                data["mask"], data["translation"] = info[0], info[1]
+
+            # Apply transformations except the last one
+            outs = transform(data, self.ops[:-1])
+
+            if outs is not None:
+                # Apply resize and normalization
+                outs = self.resize_norm_img(outs, img_width, img_height)
+                # Apply final transformation
+                outs = transform(outs, self.ops[-1:])
+
+        except Exception:
+            self.logger.error(
+                f"Error processing LMDB index {lmdb_idx}, file {file_idx}: {traceback.format_exc()}"
+            )
+            outs = None
+
+        if outs is None:
+            # During evaluation, we should fix the idx to get same results
+            # for many times of evaluation
+            rnd_idx = (idx + 1) % self.__len__()
+            return self.__getitem__([img_width, img_height, rnd_idx, wh_ratio])
+
+        return outs
+
+    def __len__(self):
+        if self.ds_width:
+            return len(self.wh_ratio)
+        else:
+            return super().__len__()
 
 
 class LMDBDataSetSR(LMDBDataSet):
@@ -263,7 +908,7 @@ class LMDBDataSetTableMaster(LMDBDataSet):
         info_lines = data[2]  # raw data from TableMASTER annotation file.
         # parse info_lines
         raw_data = info_lines.strip().split("\n")
-        raw_name, text = (
+        _raw_name, text = (
             raw_data[0],
             raw_data[1],
         )  # don't filter the samples's length over max_seq_len.

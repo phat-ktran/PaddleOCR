@@ -28,6 +28,7 @@ def build_backbone(config, model_type):
         from .det_pp_lcnet_v2 import PPLCNetV2_base
         from .rec_repvit import RepSVTR_det
         from .rec_vary_vit import Vary_VIT_B
+        from .rec_pphgnetv2 import PPHGNetV2_B4
 
         support_dict = [
             "MobileNetV3",
@@ -40,6 +41,7 @@ def build_backbone(config, model_type):
             "PPLCNetV2_base",
             "RepSVTR_det",
             "Vary_VIT_B",
+            "PPHGNetV2_B4",
         ]
         if model_type == "table":
             from .table_master_resnet import TableResNetExtra
@@ -50,6 +52,9 @@ def build_backbone(config, model_type):
         from .rec_resnet_vd import ResNet
         from .rec_resnet_fpn import ResNetFPN
         from .rec_mv1_enhance import MobileNetV1Enhance
+        from .rec_nomna_convnext import ConvNeXt
+        from .rec_focalnet import FocalNet
+        from .rec_nomnanet import NomNaNet
         from .rec_nrtr_mtb import MTB
         from .rec_resnet_31 import ResNet31
         from .rec_resnet_32 import ResNet32
@@ -71,10 +76,17 @@ def build_backbone(config, model_type):
         from .rec_repvit import RepSVTR
         from .rec_svtrv2 import SVTRv2
         from .rec_vary_vit import Vary_VIT_B, Vary_VIT_B_Formula
-        from .rec_pphgnetv2 import PPHGNetV2_B4
+        from .rec_pphgnetv2 import (
+            PPHGNetV2_B4,
+            PPHGNetV2_B4_Formula,
+            PPHGNetV2_B6_Formula,
+        )
 
         support_dict = [
             "MobileNetV1Enhance",
+            "ConvNeXt",
+            "NomNaNet",
+            "FocalNet",
             "MobileNetV3",
             "ResNet",
             "ResNetFPN",
@@ -101,6 +113,8 @@ def build_backbone(config, model_type):
             "DonutSwinModel",
             "Vary_VIT_B",
             "PPHGNetV2_B4",
+            "PPHGNetV2_B4_Formula",
+            "PPHGNetV2_B6_Formula",
             "Vary_VIT_B_Formula",
         ]
     elif model_type == "e2e":

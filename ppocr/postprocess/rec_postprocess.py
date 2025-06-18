@@ -90,7 +90,7 @@ class BaseRecLabelDecode(object):
         word_list = []
         word_col_list = []
         state_list = []
-        valid_col = np.where(selection == True)[0]
+        valid_col = np.where(selection is True)[0]
 
         for c_i, char in enumerate(text):
             if "\u4e00" <= char <= "\u9fff":
@@ -112,7 +112,7 @@ class BaseRecLabelDecode(object):
             ):  # grouping word with '-', such as 'state-of-the-art'
                 c_state = "en&num"
 
-            if state == None:
+            if state is None:
                 state = c_state
 
             if state != c_state:
@@ -224,6 +224,16 @@ class CTCLabelDecode(BaseRecLabelDecode):
     def add_special_char(self, dict_character):
         dict_character = ["blank"] + dict_character
         return dict_character
+
+
+class CTCLabelDecodeWithUnk(CTCLabelDecode):
+    def __init__(self, character_dict_path=None, use_space_char=False, **kwargs):
+        super(CTCLabelDecodeWithUnk, self).__init__(
+            character_dict_path, use_space_char, **kwargs
+        )
+
+    def add_special_char(self, dict_character):
+        return super().add_special_char(dict_character) + ["unk"]
 
 
 class DistillationCTCLabelDecode(CTCLabelDecode):
@@ -981,6 +991,70 @@ class NRTRLabelDecode(BaseRecLabelDecode):
         return result_list
 
 
+class NomNaTransformerLabelDecode(BaseRecLabelDecode):
+    """Convert between text-label and text-index"""
+
+    def __init__(self, character_dict_path=None, use_space_char=False, **kwargs):
+        super(NomNaTransformerLabelDecode, self).__init__(
+            character_dict_path, use_space_char
+        )
+
+    def __call__(self, preds, label=None, *args, **kwargs):
+        if len(preds) == 2:
+            preds_id = preds[0]
+            preds_prob = preds[1]
+            if isinstance(preds_id, paddle.Tensor):
+                preds_id = preds_id.numpy()
+            if isinstance(preds_prob, paddle.Tensor):
+                preds_prob = preds_prob.numpy()
+            if preds_id[0][0] == 2:
+                preds_idx = preds_id[:, 1:]
+                preds_prob = preds_prob[:, 1:]
+            else:
+                preds_idx = preds_id
+            text = self.decode(preds_idx, preds_prob, is_remove_duplicate=False)
+            if label is None:
+                return text
+            label = self.decode(label[:, 1:])
+        else:
+            if isinstance(preds, paddle.Tensor):
+                preds = preds.numpy()
+            preds_idx = preds.argmax(axis=2)
+            preds_prob = preds.max(axis=2)
+            text = self.decode(preds_idx, preds_prob, is_remove_duplicate=False)
+            if label is None:
+                return text
+            label = self.decode(label[:, 1:])
+        return text, label
+
+    def add_special_char(self, dict_character):
+        dict_character = ["[BLANK]", "[START]", "[END]"] + dict_character
+        return dict_character
+
+    def decode(self, text_index, text_prob=None, is_remove_duplicate=False):
+        """convert text-index into text-label."""
+        result_list = []
+        batch_size = len(text_index)
+        for batch_idx in range(batch_size):
+            char_list = []
+            conf_list = []
+            for idx in range(len(text_index[batch_idx])):
+                try:
+                    char_idx = self.character[int(text_index[batch_idx][idx])]
+                except:
+                    continue
+                if char_idx == "[END]":  # end
+                    break
+                char_list.append(char_idx)
+                if text_prob is not None:
+                    conf_list.append(text_prob[batch_idx][idx])
+                else:
+                    conf_list.append(1)
+            text = "".join(char_list)
+            result_list.append((text, np.mean(conf_list).tolist()))
+        return result_list
+
+
 class ViTSTRLabelDecode(NRTRLabelDecode):
     """Convert between text-label and text-index"""
 
@@ -1267,7 +1341,6 @@ class LaTeXOCRDecode(object):
 
 
 class UniMERNetDecode(object):
-
     SPECIAL_TOKENS_ATTRIBUTES = [
         "bos_token",
         "eos_token",
@@ -1282,11 +1355,13 @@ class UniMERNetDecode(object):
     def __init__(
         self,
         rec_char_dict_path,
+        is_infer=False,
         **kwargs,
     ):
         from tokenizers import Tokenizer as TokenizerFast
         from tokenizers import AddedToken
 
+        self.is_infer = is_infer
         self._unk_token = "<unk>"
         self._bos_token = "<s>"
         self._eos_token = "</s>"
@@ -1379,7 +1454,6 @@ class UniMERNetDecode(object):
 
     @property
     def all_special_tokens(self):
-
         all_toks = [str(s) for s in self.all_special_tokens_extended]
         return all_toks
 
@@ -1449,6 +1523,58 @@ class UniMERNetDecode(object):
         generated_text = [self.post_process(text) for text in generated_text]
         return generated_text
 
+    def normalize_infer(self, s: str) -> str:
+        """Normalizes a string by removing unnecessary spaces.
+
+        Args:
+            s (str): String to normalize.
+
+        Returns:
+            str: Normalized string.
+        """
+        text_reg = r"(\\(operatorname|mathrm|text|mathbf)\s?\*? {.*?})"
+        letter = "[a-zA-Z]"
+        noletter = "[\W_^\d]"
+        names = []
+        for x in re.findall(text_reg, s):
+            pattern = r"\\[a-zA-Z]+"
+            pattern = r"(\\[a-zA-Z]+)\s(?=\w)|\\[a-zA-Z]+\s(?=})"
+            matches = re.findall(pattern, x[0])
+            for m in matches:
+                if (
+                    m
+                    not in [
+                        "\\operatorname",
+                        "\\mathrm",
+                        "\\text",
+                        "\\mathbf",
+                    ]
+                    and m.strip() != ""
+                ):
+                    s = s.replace(m, m + "XXXXXXX")
+                    s = s.replace(" ", "")
+                    names.append(s)
+        if len(names) > 0:
+            s = re.sub(text_reg, lambda match: str(names.pop(0)), s)
+        news = s
+        while True:
+            s = news
+            news = re.sub(r"(?!\\ )(%s)\s+?(%s)" % (noletter, noletter), r"\1\2", s)
+            news = re.sub(r"(?!\\ )(%s)\s+?(%s)" % (noletter, letter), r"\1\2", news)
+            news = re.sub(r"(%s)\s+?(%s)" % (letter, noletter), r"\1\2", news)
+            if news == s:
+                break
+        return s.replace("XXXXXXX", " ")
+
+    def remove_chinese_text_wrapping(self, formula):
+        pattern = re.compile(r"\\text\s*{\s*([^}]*?[\u4e00-\u9fff]+[^}]*?)\s*}")
+
+        def replacer(match):
+            return match.group(1)
+
+        replaced_formula = pattern.sub(replacer, formula)
+        return replaced_formula.replace('"', "")
+
     def normalize(self, s):
         text_reg = r"(\\(operatorname|mathrm|text|mathbf)\s?\*? {.*?})"
         letter = "[a-zA-Z]"
@@ -1465,11 +1591,24 @@ class UniMERNetDecode(object):
                 break
         return s
 
-    def post_process(self, text):
+    def post_process(self, text: str) -> str:
+        """Post-processes a string by fixing text and normalizing it.
+
+        Args:
+            text (str): String to post-process.
+
+        Returns:
+            str: Post-processed string.
+        """
         from ftfy import fix_text
 
-        text = fix_text(text)
-        text = self.normalize(text)
+        if self.is_infer:
+            text = self.remove_chinese_text_wrapping(text)
+            text = fix_text(text)
+            text = self.normalize_infer(text)
+        else:
+            text = fix_text(text)
+            text = self.normalize(text)
         return text
 
     def __call__(self, preds, label=None, mode="eval", *args, **kwargs):

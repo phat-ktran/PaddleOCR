@@ -16,13 +16,10 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import math
 
 import paddle
-from paddle import ParamAttr, nn
-from paddle import nn, ParamAttr
+from paddle import nn
 from paddle.nn import functional as F
-import numpy as np
 
 gradient_clip = 10
 
@@ -274,7 +271,7 @@ class MultiHeadAttention(nn.Layer):
             v = paddle.transpose(x=v, perm=[0, 2, 1, 3])
 
         if cache is not None:
-            if static_kv and not "static_k" in cache:
+            if static_kv and "static_k" not in cache:
                 # for encoder-decoder attention in inference and has not cached
                 cache["static_k"], cache["static_v"] = k, v
             elif not static_kv:
@@ -358,6 +355,13 @@ class PrePostProcessLayer(nn.Layer):
 
 
 class PrepareEncoder(nn.Layer):
+    """
+    The primary purpose of this class is to prepare the input data for the encoder 
+    by combining word embeddings with positional encodings and optionally applying dropout. 
+    This preparation is crucial for sequence-to-sequence models, as it helps the model understand 
+    the order of the input sequence and regularize the training process.
+    """
+
     def __init__(
         self,
         src_vocab_size,

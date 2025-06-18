@@ -36,18 +36,20 @@ from .rec_ce_loss import CELoss
 from .rec_sar_loss import SARLoss
 from .rec_aster_loss import AsterLoss
 from .rec_pren_loss import PRENLoss
-from .rec_multi_loss import MultiLoss
+from .rec_multi_loss import MultiLoss, KLMultiLoss
 from .rec_vl_loss import VLLoss
 from .rec_spin_att_loss import SPINAttentionLoss
 from .rec_rfl_loss import RFLLoss
 from .rec_can_loss import CANLoss
 from .rec_satrn_loss import SATRNLoss
 from .rec_nrtr_loss import NRTRLoss
+from .rec_nomna_loss import NomNaTransformerLoss
 from .rec_parseq_loss import ParseQLoss
 from .rec_cppd_loss import CPPDLoss
 from .rec_latexocr_loss import LaTeXOCRLoss
 from .rec_unimernet_loss import UniMERNetLoss
 from .rec_ppformulanet_loss import PPFormulaNet_S_Loss, PPFormulaNet_L_Loss
+from .rec_guidance_loss import GuidanceLoss
 
 # cls loss
 from .cls_loss import ClsLoss
@@ -105,9 +107,12 @@ def build_loss(config):
         "RFLLoss",
         "DRRGLoss",
         "CANLoss",
+        "GuidanceLoss",
+        "KLMultiLoss",
         "TelescopeLoss",
         "SATRNLoss",
         "NRTRLoss",
+        "NomNaTransformerLoss",
         "ParseQLoss",
         "CPPDLoss",
         "LaTeXOCRLoss",
