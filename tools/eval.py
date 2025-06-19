@@ -36,6 +36,12 @@ def main():
     global_config = config["Global"]
     if config["Global"].get("distributed", False):
         paddle.distributed.init_parallel_env()
+    save_res_path = config["Global"].get(
+        "save_res_path", None
+    )
+    filename_idx = config["Global"].get(
+        "filename_idx", None
+    )
     # build dataloader
     set_signal_handlers()
     valid_dataloader = build_dataloader(config, "Eval", device, logger)
@@ -172,6 +178,8 @@ def main():
         scaler,
         amp_level,
         amp_custom_black_list,
+        save_res_path,
+        filename_idx
     )
     logger.info("metric eval ***************")
     for k, v in metric.items():

@@ -16,6 +16,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import json
 import os
 import gc
 import sys
@@ -698,7 +699,10 @@ def eval(
     amp_custom_black_list=[],
     amp_custom_white_list=[],
     amp_dtype="float16",
+    save_res_path=None,
+    filename_idx=None
 ):
+    fout = open(save_res_path, "w") if save_res_path else None
     model.eval()
     with paddle.no_grad():
         total_frame = 0.0
@@ -717,7 +721,7 @@ def eval(
                 break
             images = batch[0]
             start = time.time()
-
+            preds_result = []
             # use amp
             if scaler:
                 with paddle.amp.auto_cast(
@@ -765,6 +769,7 @@ def eval(
             # Obtain usable results from post-processing methods
             total_time += time.time() - start
             # Evaluate the results of the current batch
+            post_result = None
             if model_type in ["table", "kie"]:
                 if post_process_class is None:
                     eval_class(preds, batch_numpy)
@@ -781,17 +786,50 @@ def eval(
             else:
                 post_result = post_process_class(preds, batch_numpy[1])
                 eval_class(post_result, batch_numpy)
-
+            
+            if save_res_path and post_result:
+                info = None
+                if isinstance(post_result, dict):
+                    rec_info = dict()
+                    for key in post_result:
+                        if len(post_result[key][0]) >= 2:
+                            rec_info[key] = [{
+                                "label": post_result_item[0],
+                                "score": float(post_result_item[1]),
+                            } for post_result_item in post_result[key]]
+                    info = json.dumps(rec_info, ensure_ascii=False)
+                elif isinstance(post_result, list) and isinstance(post_result[0], int):
+                    # for RFLearning CNT branch
+                    info = [str(post_result_item) for post_result_item in post_result]
+                elif model_type in [
+                    "latexocr",
+                    "unimernet",
+                    "pp_formulanet"
+                ]:
+                    info = [str(post_result_item) for post_result_item in post_result]
+                else:
+                    if len(post_result[0]) >= 2:
+                        info = [post_result_item[0] + "\t" + str(post_result_item[1]) for post_result_item in post_result]
+                        if filename_idx and len(batch) > filename_idx and len(batch[filename_idx]) == len(images):
+                            filenames = batch[filename_idx]
+                            info = [filename + "\t" + info_item for filename, info_item in zip(filenames, info)]
+                if info:
+                    preds_result.extend(info)
             pbar.update(1)
             total_frame += len(images)
             sum_images += 1
             
-            del preds, images, batch_numpy
+            if fout and preds_result:
+                for info in preds_result:
+                    fout.write(info + "\n")            
+            del preds, images, batch_numpy, preds_result
+        
         paddle.device.cuda.empty_cache()
-        gc.collect() 
+        gc.collect()
 
         metric = eval_class.get_metric()
-
+        
+    fout.close() if fout else None
     pbar.close()
     model.train()
     # Avoid ZeroDivisionError
