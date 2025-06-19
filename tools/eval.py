@@ -178,8 +178,8 @@ def main():
         scaler,
         amp_level,
         amp_custom_black_list,
-        save_res_path,
-        filename_idx
+        save_res_path=save_res_path,
+        filename_idx=filename_idx
     )
     logger.info("metric eval ***************")
     for k, v in metric.items():
