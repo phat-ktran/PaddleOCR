@@ -2,11 +2,11 @@ Global:
   model_name: SVTRNet
   debug: false
   use_gpu: true
-  epoch_num: 40
+  epoch_num: 50
   distributed: true
   log_smooth_window: 20
   print_batch_step: 10
-  save_model_dir: ./output/rec_svtrnet_base_ch_exp_c1.0.0/
+  save_model_dir: ./output/rec_svtrnet_base_ch_exp_c1.1.0/
   save_epoch_step: 1
   eval_batch_step: [0, 4882]
   cal_metric_during_train: true
@@ -28,7 +28,7 @@ Global:
 wandb:
   project: "M5HisDoc"
   entity: "trankim147-vnu-hcmus"
-  name: "C1.0.0"
+  name: "C1.1.0"
 
 Optimizer:
   name: AdamW
