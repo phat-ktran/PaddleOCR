@@ -223,14 +223,60 @@ def load_pretrained_params(model, path, config):
                         k1, params[k1].shape, k1, state_dict[k1_mapped].shape
                     )
                 )
-                overlap_dim = min(params[k1].shape[-1], state_dict[k1_mapped].shape[-1])
-                if not top_k:
-                    top_k = overlap_dim
-                new_state_dict[k1_mapped] = state_dict[k1_mapped].clone()
-                if params[k1].ndim > 1:
-                    new_state_dict[k1_mapped][:, :top_k] = params[k1][:, :top_k]
+                
+                if k1 == "backbone.pos_embed":
+                    import paddle
+                    import paddle.nn.functional as F
+                    
+                    def resize_pos_embed(pretrained_pos_embed, target_shape):
+                        """
+                        Resize pretrained positional embeddings to match the target shape.
+                        
+                        Args:
+                            pretrained_pos_embed (Tensor): Pretrained positional embeddings [1, num_patches_old, embed_dim].
+                            target_shape (tuple): Desired shape [1, num_patches_new, embed_dim].
+                        
+                        Returns:
+                            Tensor: Resized positional embeddings.
+                        """
+                        # Ensure the input is a 3D tensor
+                        assert pretrained_pos_embed.ndim == 3, f"Expected 3D tensor, got {pretrained_pos_embed.ndim}D"
+                        
+                        # Get dimensions
+                        _, num_patches_old, embed_dim = pretrained_pos_embed.shape
+                        _, num_patches_new, embed_dim_new = target_shape
+                        
+                        assert embed_dim == embed_dim_new, f"Embedding dimensions must match: {embed_dim} vs {embed_dim_new}"
+                        
+                        # Reshape to [1, sqrt(num_patches_old), sqrt(num_patches_old), embed_dim] for interpolation
+                        grid_size_old = int(num_patches_old ** 0.5)  # Assuming square grid (e.g., for ViT)
+                        grid_size_new = int(num_patches_new ** 0.5)  # Target grid size
+                        
+                        # Reshape for interpolation
+                        pos_embed = pretrained_pos_embed.reshape([1, grid_size_old, grid_size_old, embed_dim])
+                        
+                        # Interpolate to new grid size
+                        pos_embed = pos_embed.transpose([0, 3, 1, 2])  # [1, embed_dim, grid_size_old, grid_size_old]
+                        pos_embed = F.interpolate(pos_embed, size=(grid_size_new, grid_size_new), mode='bicubic', align_corners=False)
+                        pos_embed = pos_embed.transpose([0, 2, 3, 1])  # [1, grid_size_new, grid_size_new, embed_dim]
+                        
+                        # Flatten back to [1, num_patches_new, embed_dim]
+                        pos_embed = pos_embed.reshape([1, num_patches_new, embed_dim])
+                        
+                        return pos_embed
+                    new_state_dict[k1_mapped] = resize_pos_embed(
+                        pretrained_pos_embed=state_dict[k1_mapped].clone(),
+                        target_shape=state_dict[k1_mapped].shape
+                    )
                 else:
-                    new_state_dict[k1_mapped][:top_k] = params[k1][:top_k]
+                    overlap_dim = min(params[k1].shape[-1], state_dict[k1_mapped].shape[-1])
+                    if not top_k:
+                        top_k = overlap_dim
+                    new_state_dict[k1_mapped] = state_dict[k1_mapped].clone()
+                    if params[k1].ndim > 1:
+                        new_state_dict[k1_mapped][:, :top_k] = params[k1][:, :top_k]
+                    else:
+                        new_state_dict[k1_mapped][:top_k] = params[k1][:top_k]
             else:
                 logger.warning(
                     "The shape of model params {} {} not matched with loaded params {} {} !".format(
