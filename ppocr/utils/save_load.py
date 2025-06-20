@@ -249,7 +249,7 @@ def load_pretrained_params(model, path, config):
                         pos_embed = pretrained_pos_embed.transpose([0, 2, 1])  # [1, embed_dim, num_patches_old]
                         
                         # Interpolate to new number of patches
-                        pos_embed = F.interpolate(pos_embed, size=num_patches_new, mode='linear', align_corners=False)
+                        pos_embed = F.interpolate(pos_embed, size=(num_patches_new,), mode='linear', align_corners=False)
                         
                         # Reshape back to [1, num_patches_new, embed_dim]
                         pos_embed = pos_embed.transpose([0, 2, 1])  # [1, num_patches_new, embed_dim]
