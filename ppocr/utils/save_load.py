@@ -25,7 +25,7 @@ from packaging import version
 from huggingface_hub import HfApi
 
 import paddle
-
+import paddle.nn.functional as F
 from ppocr.utils.logging import get_logger
 from ppocr.utils.network import maybe_download_params
 
@@ -224,10 +224,7 @@ def load_pretrained_params(model, path, config):
                     )
                 )
                 
-                if k1 == "backbone.pos_embed":
-                    import paddle
-                    import paddle.nn.functional as F
-                    
+                if k1 == "backbone.pos_embed":                    
                     def resize_pos_embed(pretrained_pos_embed, target_shape):
                         """
                         Resize pretrained positional embeddings to match the target shape.
