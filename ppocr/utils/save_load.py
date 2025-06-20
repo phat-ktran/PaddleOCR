@@ -257,7 +257,7 @@ def load_pretrained_params(model, path, config):
                         return pos_embed
                     new_state_dict[k1_mapped] = resize_pos_embed(
                         pretrained_pos_embed=params[k1].clone(),
-                        target_shape=new_state_dict[k1_mapped].shape
+                        target_shape=state_dict[k1_mapped].shape
                     )
                 else:
                     overlap_dim = min(params[k1].shape[-1], state_dict[k1_mapped].shape[-1])
