@@ -32,7 +32,7 @@ Global:
 wandb:
   project: "M5HisDoc"
   entity: "trankim147-vnu-hcmus"
-  name: "C1.1.0"
+  name: "C1.2.0"
 
 Optimizer:
   name: AdamW
