@@ -227,7 +227,7 @@ def load_pretrained_params(model, path, config):
                 if k1 == "backbone.pos_embed":                    
                     def resize_pos_embed(pretrained_pos_embed, target_shape):
                         """
-                        Resize pretrained positional embeddings to match the target shape.
+                        Resize pretrained positional embeddings to match the target shape using 1D interpolation.
                         
                         Args:
                             pretrained_pos_embed (Tensor): Pretrained positional embeddings [1, num_patches_old, embed_dim].
@@ -245,20 +245,14 @@ def load_pretrained_params(model, path, config):
                         
                         assert embed_dim == embed_dim_new, f"Embedding dimensions must match: {embed_dim} vs {embed_dim_new}"
                         
-                        # Reshape to [1, sqrt(num_patches_old), sqrt(num_patches_old), embed_dim] for interpolation
-                        grid_size_old = int(num_patches_old ** 0.5)  # Assuming square grid (e.g., for ViT)
-                        grid_size_new = int(num_patches_new ** 0.5)  # Target grid size
+                        # Reshape to [1, embed_dim, num_patches_old] for 1D interpolation
+                        pos_embed = pretrained_pos_embed.transpose([0, 2, 1])  # [1, embed_dim, num_patches_old]
                         
-                        # Reshape for interpolation
-                        pos_embed = pretrained_pos_embed.reshape([1, grid_size_old, grid_size_old, embed_dim])
+                        # Interpolate to new number of patches
+                        pos_embed = F.interpolate(pos_embed, size=num_patches_new, mode='linear', align_corners=False)
                         
-                        # Interpolate to new grid size
-                        pos_embed = pos_embed.transpose([0, 3, 1, 2])  # [1, embed_dim, grid_size_old, grid_size_old]
-                        pos_embed = F.interpolate(pos_embed, size=(grid_size_new, grid_size_new), mode='bicubic', align_corners=False)
-                        pos_embed = pos_embed.transpose([0, 2, 3, 1])  # [1, grid_size_new, grid_size_new, embed_dim]
-                        
-                        # Flatten back to [1, num_patches_new, embed_dim]
-                        pos_embed = pos_embed.reshape([1, num_patches_new, embed_dim])
+                        # Reshape back to [1, num_patches_new, embed_dim]
+                        pos_embed = pos_embed.transpose([0, 2, 1])  # [1, num_patches_new, embed_dim]
                         
                         return pos_embed
                     new_state_dict[k1_mapped] = resize_pos_embed(
