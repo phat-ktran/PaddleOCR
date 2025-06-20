@@ -175,10 +175,10 @@ def load_model(config, model, optimizer=None, model_type="det"):
 
 
 def load_pretrained_params(model, path, config):
-    overwrite_head, topk = False, None
+    override_head, top_k = False, None
     if "Global" in config:
-        overwrite_head = config["Global"].get("overwrite_head", False)
-        topk = config["Global"].get("topk", None)
+        override_head = config["Global"].get("override_head", False)
+        top_k = config["Global"].get("top_k", None)
     mapped_key_prefixes = config.get("mapped_key_prefixes", None)
     logger = get_logger()
     path = maybe_download_params(path)
@@ -217,20 +217,20 @@ def load_pretrained_params(model, path, config):
                 params[k1_mapped] = params[k1].astype(state_dict[k1_mapped].dtype)
             if list(state_dict[k1_mapped].shape) == list(params[k1].shape):
                 new_state_dict[k1_mapped] = params[k1]
-            elif overwrite_head:
+            elif override_head:
                 logger.warning(
                     "The shape of pretrained param {} {} does not match model param {} {}. Will try to copy overlapping dims.".format(
                         k1, params[k1].shape, k1, state_dict[k1_mapped].shape
                     )
                 )
                 overlap_dim = min(params[k1].shape[-1], state_dict[k1_mapped].shape[-1])
-                if not topk:
-                    topk = overlap_dim
+                if not top_k:
+                    top_k = overlap_dim
                 new_state_dict[k1_mapped] = state_dict[k1_mapped].clone()
                 if params[k1].ndim > 1:
-                    new_state_dict[k1_mapped][:, :topk] = params[k1][:, :topk]
+                    new_state_dict[k1_mapped][:, :top_k] = params[k1][:, :top_k]
                 else:
-                    new_state_dict[k1_mapped][:topk] = params[k1][:topk]
+                    new_state_dict[k1_mapped][:top_k] = params[k1][:top_k]
             else:
                 logger.warning(
                     "The shape of model params {} {} not matched with loaded params {} {} !".format(
