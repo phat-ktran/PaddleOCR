@@ -50,6 +50,7 @@ from .rec_latexocr_loss import LaTeXOCRLoss
 from .rec_unimernet_loss import UniMERNetLoss
 from .rec_ppformulanet_loss import PPFormulaNet_S_Loss, PPFormulaNet_L_Loss
 from .rec_guidance_loss import GuidanceLoss
+from .rec_stc_loss import STCLoss
 
 # cls loss
 from .cls_loss import ClsLoss
@@ -84,6 +85,7 @@ def build_loss(config):
         "SASTLoss",
         "FCELoss",
         "CTCLoss",
+        "STCLoss",
         "ClsLoss",
         "AttentionLoss",
         "SRNLoss",
