@@ -52,7 +52,7 @@ Architecture:
       - 48
       - 480
     out_char_num: 40 # W//4 or W//8 or W/12
-    out_channels: 96
+    out_channels: 256
     patch_merging: Conv
     patch_size: [4, 8]
     drop_rate: 0.2
@@ -66,7 +66,7 @@ Architecture:
     depth:
       - 3
       - 6
-      - 9
+      - 6
     num_heads:
       - 4
       - 8
