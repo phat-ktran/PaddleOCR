@@ -2,16 +2,16 @@ Global:
   model_name: SVTRNet
   debug: false
   use_gpu: true
-  epoch_num: 400
+  epoch_num: 40
   distributed: true
   log_smooth_window: 20
   print_batch_step: 100
-  save_model_dir: ./output/rec_svtrnet_base_nom_exp_b2.0.0/
+  save_model_dir: ./output/rec_svtrnet_base_nom_exp_b2.0.1/
   save_epoch_step: 10
   eval_batch_step: [5950, 1190]
   cal_metric_during_train: true
 
-  pretrained_model: null
+  pretrained_model: ./output/rec_svtrnet_base_ch_exp_a5.1.0/best_accuracy
   checkpoints: null
   character_dict_path: ./ppocr/utils/dict/PP-Thesis/nomnaocr.txt
   save_inference_dir:
@@ -20,14 +20,14 @@ Global:
   save_res_path: null
   infer_mode: false
   use_space_char: false
-  max_text_length: &max_text_length 25
+  max_text_length: 25
   use_wandb: true
-  d2s_train_image_shape: [3, 48, 320]
+  d2s_train_image_shape: [3, 48, 480]
   
 wandb:
   project: "Sino-Nom"
   entity: "trankim147-vnu-hcmus"
-  name: "B2.0.0"
+  name: "B2.0.1"
 
 Optimizer:
   name: AdamW
@@ -39,8 +39,8 @@ Optimizer:
   one_dim_param_no_weight_decay: True
   lr:
     name: Cosine
-    learning_rate: 0.0005
-    warmup_epoch: 10
+    learning_rate: 0.0001
+    warmup_epoch: 5
 
 Architecture:
   model_type: rec
@@ -50,8 +50,8 @@ Architecture:
     name: SVTRNet
     img_size:
       - 48
-      - 320
-    out_char_num: *max_text_length # W//4 or W//8 or W/12
+      - 480
+    out_char_num: 40 # W//4 or W//8 or W/12
     out_channels: 96
     patch_merging: Conv
     patch_size: [4, 8]
@@ -98,7 +98,7 @@ Architecture:
       - - 7
         - 11
     last_stage: true
-    prenorm: false
+    prenorm: true
   Neck:
     name: SequenceEncoder
     encoder_type: reshape
@@ -132,7 +132,7 @@ Train:
           ext_data_num: 2
           image_shape:
             - 48
-            - 320
+            - 480
             - 3
       - RecAug:
       - CTCLabelEncode: null
@@ -140,7 +140,7 @@ Train:
           image_shape:
             - 3
             - 48
-            - 320
+            - 480
           padding: true
       - KeepKeys:
           keep_keys:
@@ -149,7 +149,7 @@ Train:
             - length
   loader:
     shuffle: true
-    batch_size_per_card: 32
+    batch_size_per_card: 30
     drop_last: true
     num_workers: 16
 
@@ -168,7 +168,7 @@ Eval:
           image_shape:
             - 3
             - 48
-            - 320
+            - 480
           padding: true
       - KeepKeys:
           keep_keys:
