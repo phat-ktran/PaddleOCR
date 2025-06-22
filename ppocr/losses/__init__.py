@@ -50,7 +50,6 @@ from .rec_latexocr_loss import LaTeXOCRLoss
 from .rec_unimernet_loss import UniMERNetLoss
 from .rec_ppformulanet_loss import PPFormulaNet_S_Loss, PPFormulaNet_L_Loss
 from .rec_guidance_loss import GuidanceLoss
-from .rec_stc_loss import STCLoss
 
 # cls loss
 from .cls_loss import ClsLoss
@@ -127,5 +126,8 @@ def build_loss(config):
     assert module_name in support_dict, Exception(
         "loss only support {}".format(support_dict)
     )
+    if module_name == "STCLoss":
+        from .rec_stc_loss import STCLoss
+        pass
     module_class = eval(module_name)(**config)
     return module_class
