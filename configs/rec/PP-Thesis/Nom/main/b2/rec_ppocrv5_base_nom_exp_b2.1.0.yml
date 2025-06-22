@@ -2,7 +2,7 @@ Global:
   model_name: PPHGNetV2_B4 # To use static model for inference.
   debug: false
   use_gpu: true
-  epoch_num: 400
+  epoch_num: 50
   distributed: true
   eval_batch_step: [10000, 2500]
   log_smooth_window: 20
@@ -27,7 +27,7 @@ Global:
   use_space_char: false
   max_text_length: 25
   use_wandb: true
-  d2s_train_image_shape: [3, 48, 320]
+  d2s_train_image_shape: [3, 48, 480]
 
 wandb:
   project: "Sino-Nom"
@@ -100,7 +100,7 @@ Train:
           ext_data_num: 2
           image_shape:
             - 48
-            - 320
+            - 480
             - 3
       - RecAug:
       - CTCLabelEncode: null
@@ -108,7 +108,7 @@ Train:
           image_shape:
             - 3
             - 48
-            - 320
+            - 480
           padding: true
       - KeepKeys:
           keep_keys:
@@ -136,7 +136,7 @@ Eval:
           image_shape:
             - 3
             - 48
-            - 320
+            - 480
           padding: true
       - KeepKeys:
           keep_keys:
