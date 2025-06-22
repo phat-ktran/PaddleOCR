@@ -189,15 +189,17 @@ class STCLoss(nn.Layer):
         # Compute log-sum-exp for normalization
         lse = paddle.logsumexp(predicts[:, :, 1:], axis=2, keepdim=True)
         
-        # Create target sequences for each batch item
+        # Move all lengths to CPU once to avoid GPU .item() calls
+        label_lengths_list = label_lengths.cpu().numpy().astype("int64").tolist()
         batch_targets = []
-        select_idx_set = set([STC_BLANK_IDX])
-        
+        select_idx_set = {STC_BLANK_IDX}
+
         for b in range(B):
-            target_len = label_lengths[b].item()  # Convert to Python int
+            target_len = label_lengths_list[b]
             target_seq = labels[b, :target_len].tolist()
             batch_targets.append(target_seq)
             select_idx_set.update(target_seq)
+
         
         # Create index mapping
         select_idx = sorted(list(select_idx_set))
