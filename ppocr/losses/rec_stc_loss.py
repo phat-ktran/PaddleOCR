@@ -193,14 +193,31 @@ class STCLoss(nn.Layer):
         batch_targets = []
         select_idx_set = set([STC_BLANK_IDX])
         
-        # Convert label_lengths to CPU and then to numpy for safe access
-        label_lengths_cpu = label_lengths.cpu().numpy()
-        labels_cpu = labels.cpu().numpy()
+        # Safely convert tensors to numpy for indexing
+        try:
+            # Move to CPU if needed for safe numpy conversion
+            if labels.place.is_gpu_place():
+                labels_np = labels.cpu().numpy()
+                label_lengths_np = label_lengths.cpu().numpy()
+            else:
+                labels_np = labels.numpy()
+                label_lengths_np = label_lengths.numpy()
+        except Exception as e:
+            # Fallback: use tensor operations instead of numpy
+            print(f"Warning: Could not convert to numpy, using tensor operations: {e}")
+            labels_np = None
+            label_lengths_np = None
         
         for b in range(B):
-            # Safe access using numpy array
-            target_len = int(label_lengths_cpu[b])
-            target_seq = labels_cpu[b, :target_len].tolist()
+            if labels_np is not None:
+                # Safe numpy access
+                target_len = int(label_lengths_np[b])
+                target_seq = labels_np[b, :target_len].tolist()
+            else:
+                # Fallback: use tensor slicing
+                target_len = int(label_lengths[b])
+                target_seq = labels[b, :target_len].tolist()
+            
             batch_targets.append(target_seq)
             select_idx_set.update(target_seq)
         
@@ -262,11 +279,8 @@ class STCLoss(nn.Layer):
         if paddle.any(label_lengths < 0) or paddle.any(label_lengths > max_label_len):
             raise ValueError(f"Invalid label_lengths: must be in range [0, {max_label_len}]")
         
-        # Ensure tensors are on the same device
-        if labels.place != predicts.place:
-            labels = labels.to(predicts.place)
-        if label_lengths.place != predicts.place:
-            label_lengths = label_lengths.to(predicts.place)
+        # Skip device placement check - let PaddlePaddle handle it automatically
+        # The tensors should already be on the correct device from the dataloader
         
         try:
             # Prepare inputs for Star CTC
@@ -298,10 +312,20 @@ class STCLoss(nn.Layer):
             print(f"  Predicts shape: {predicts.shape}")
             print(f"  Labels shape: {labels.shape}")
             print(f"  Label lengths shape: {label_lengths.shape}")
-            print(f"  Labels device: {labels.place}")
-            print(f"  Label lengths device: {label_lengths.place}")
-            print(f"  Predicts device: {predicts.place}")
+            print(f"  Labels place: {labels.place}")
+            print(f"  Label lengths place: {label_lengths.place}")
+            print(f"  Predicts place: {predicts.place}")
+            print(f"  Labels dtype: {labels.dtype}")
+            print(f"  Label lengths dtype: {label_lengths.dtype}")
+            print(f"  Max label length: {max_label_len}")
+            if hasattr(label_lengths, 'min') and hasattr(label_lengths, 'max'):
+                try:
+                    print(f"  Label lengths range: {label_lengths.min().item()} - {label_lengths.max().item()}")
+                except:
+                    print(f"  Could not get label lengths range")
             print(f"  Error: {str(e)}")
+            import traceback
+            traceback.print_exc()
             raise e
 
 
