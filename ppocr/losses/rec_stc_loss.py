@@ -130,7 +130,7 @@ class STCLossFunction(paddle.autograd.PyLayer):
             grad_scale = grad_output.mean()
             
         input_grad *= grad_scale / B
-        return input_grad, None, None, None
+        return input_grad
 
 class STCLoss(nn.Layer):
     """
@@ -258,7 +258,7 @@ class STCLoss(nn.Layer):
         stc_inputs = stc_inputs.transpose((1, 0, 2))
         
         # Compute Star CTC loss
-        loss = STCLossFunction.apply(stc_inputs, stc_targets, prob, "mean")
+        loss = STCLossFunction.apply(stc_inputs, stc_targets, prob, "none")
         
         # Apply focal loss if enabled
         if self.use_focal_loss:
@@ -268,6 +268,8 @@ class STCLoss(nn.Layer):
             weight = paddle.subtract(paddle.to_tensor([1.0]), weight)
             weight = paddle.square(weight)
             loss = paddle.mean(paddle.multiply(individual_losses, weight))
+        else:
+            loss = paddle.to_tensor([loss])
         
         return {"loss": loss}
 
