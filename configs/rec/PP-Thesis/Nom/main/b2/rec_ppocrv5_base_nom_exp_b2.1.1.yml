@@ -2,7 +2,7 @@ Global:
   model_name: PPHGNetV2_B4 # To use static model for inference.
   debug: false
   use_gpu: true
-  epoch_num: 20
+  epoch_num: 40
   distributed: true
   eval_batch_step: [10000, 2500]
   log_smooth_window: 20
@@ -13,7 +13,7 @@ Global:
   calc_epoch_interval: 1
 
   # vanish gradient combat
-  log_grad_norm: true
+  log_grad_norm: false
   #########################
 
   pretrained_model: https://paddle-model-ecology.bj.bcebos.com/paddlex/official_pretrained_model/PP-OCRv5_server_rec_pretrained.pdparams
@@ -27,7 +27,7 @@ Global:
   use_space_char: false
   max_text_length: &max_text_length 25
   use_wandb: true
-  d2s_train_image_shape: [3, 48, 320]
+  d2s_train_image_shape: [3, 48, 480]
 
 wandb:
   project: "Sino-Nom"
@@ -119,7 +119,7 @@ Train:
             - valid_ratio
   sampler:
     name: MultiScaleSampler
-    scales: [[320, 32], [320, 48], [320, 64]]
+    scales: [[480, 32], [480, 48], [480, 64]]
     first_bs: &bs 128
     fix_bs: false
     divided_factor: [8, 16] # w, h
@@ -143,7 +143,7 @@ Eval:
     - MultiLabelEncode:
         gtc_encode: NRTRLabelEncode
     - RecResizeImg:
-        image_shape: [3, 48, 320]
+        image_shape: [3, 48, 480]
     - KeepKeys:
         keep_keys:
         - image
@@ -154,5 +154,5 @@ Eval:
   loader:
     shuffle: false
     drop_last: false
-    batch_size_per_card: 512
+    batch_size_per_card: 384
     num_workers: 12
