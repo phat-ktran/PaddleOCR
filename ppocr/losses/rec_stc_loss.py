@@ -215,7 +215,7 @@ class STCLoss(nn.Layer):
                 target_seq = labels_np[b, :target_len].tolist()
             else:
                 # Fallback: use tensor slicing
-                target_len = int(label_lengths[b])
+                target_len = int(label_lengths[b].item())
                 target_seq = labels[b, :target_len].tolist()
             
             batch_targets.append(target_seq)
