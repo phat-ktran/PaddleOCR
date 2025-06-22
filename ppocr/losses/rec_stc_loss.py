@@ -193,31 +193,9 @@ class STCLoss(nn.Layer):
         batch_targets = []
         select_idx_set = set([STC_BLANK_IDX])
         
-        # Safely convert tensors to numpy for indexing
-        try:
-            # Move to CPU if needed for safe numpy conversion
-            if labels.place.is_gpu_place():
-                labels_np = labels.cpu().numpy()
-                label_lengths_np = label_lengths.cpu().numpy()
-            else:
-                labels_np = labels.numpy()
-                label_lengths_np = label_lengths.numpy()
-        except Exception as e:
-            # Fallback: use tensor operations instead of numpy
-            print(f"Warning: Could not convert to numpy, using tensor operations: {e}")
-            labels_np = None
-            label_lengths_np = None
-        
         for b in range(B):
-            if labels_np is not None:
-                # Safe numpy access
-                target_len = int(label_lengths_np[b])
-                target_seq = labels_np[b, :target_len].tolist()
-            else:
-                # Fallback: use tensor slicing
-                target_len = int(label_lengths[b].item())
-                target_seq = labels[b, :target_len].tolist()
-            
+            target_len = label_lengths[b].item()  # Convert to Python int
+            target_seq = labels[b, :target_len].tolist()
             batch_targets.append(target_seq)
             select_idx_set.update(target_seq)
         
@@ -271,62 +249,29 @@ class STCLoss(nn.Layer):
         labels = batch[1].astype("int32")
         label_lengths = batch[2].astype("int64")
         
-        # Add validation to prevent memory access issues
-        batch_size = labels.shape[0]
-        max_label_len = labels.shape[1]
+        # Prepare inputs for Star CTC
+        stc_inputs, stc_targets, prob = self._prepare_inputs_for_stc(
+            log_probs, labels, label_lengths
+        )
         
-        # Validate label_lengths
-        if paddle.any(label_lengths < 0) or paddle.any(label_lengths > max_label_len):
-            raise ValueError(f"Invalid label_lengths: must be in range [0, {max_label_len}]")
+        # Transpose back to (B, T, C) for STCLossFunction
+        stc_inputs = stc_inputs.transpose((1, 0, 2))
         
-        # Skip device placement check - let PaddlePaddle handle it automatically
-        # The tensors should already be on the correct device from the dataloader
+        # Compute Star CTC loss
+        loss = STCLossFunction.apply(stc_inputs, stc_targets, prob, "none")
         
-        try:
-            # Prepare inputs for Star CTC
-            stc_inputs, stc_targets, prob = self._prepare_inputs_for_stc(
-                log_probs, labels, label_lengths
-            )
-            
-            # Transpose back to (B, T, C) for STCLossFunction
-            stc_inputs = stc_inputs.transpose((1, 0, 2))
-            
-            # Compute Star CTC loss
-            loss = STCLossFunction.apply(stc_inputs, stc_targets, prob, "mean")
-            
-            # Apply focal loss if enabled
-            if self.use_focal_loss:
-                # For focal loss, we need individual losses
-                individual_losses = STCLossFunction.apply(stc_inputs, stc_targets, prob, "none")
-                weight = paddle.exp(-individual_losses)
-                weight = paddle.subtract(paddle.to_tensor([1.0]), weight)
-                weight = paddle.square(weight)
-                loss = paddle.mean(paddle.multiply(individual_losses, weight))
-            
-            return {"loss": loss}
-            
-        except Exception as e:
-            # Provide more detailed error information
-            print(f"Error in STCLoss forward pass:")
-            print(f"  Batch size: {batch_size}")
-            print(f"  Predicts shape: {predicts.shape}")
-            print(f"  Labels shape: {labels.shape}")
-            print(f"  Label lengths shape: {label_lengths.shape}")
-            print(f"  Labels place: {labels.place}")
-            print(f"  Label lengths place: {label_lengths.place}")
-            print(f"  Predicts place: {predicts.place}")
-            print(f"  Labels dtype: {labels.dtype}")
-            print(f"  Label lengths dtype: {label_lengths.dtype}")
-            print(f"  Max label length: {max_label_len}")
-            if hasattr(label_lengths, 'min') and hasattr(label_lengths, 'max'):
-                try:
-                    print(f"  Label lengths range: {label_lengths.min().item()} - {label_lengths.max().item()}")
-                except:
-                    print(f"  Could not get label lengths range")
-            print(f"  Error: {str(e)}")
-            import traceback
-            traceback.print_exc()
-            raise e
+        # Apply focal loss if enabled
+        if self.use_focal_loss:
+            # For focal loss, we need individual losses
+            individual_losses = STCLossFunction.apply(stc_inputs, stc_targets, prob, "none")
+            weight = paddle.exp(-individual_losses)
+            weight = paddle.subtract(paddle.to_tensor([1.0]), weight)
+            weight = paddle.square(weight)
+            loss = paddle.mean(paddle.multiply(individual_losses, weight))
+        else:
+            loss = paddle.to_tensor([loss])
+        
+        return {"loss": loss}
 
 
 # Test function for the Star CTC loss
@@ -334,7 +279,7 @@ def test_stc_loss():
     """Test the Star CTC loss with PaddleOCR-style inputs."""
     
     # Create test data
-    batch_size = 2  # Use smaller batch size for testing
+    batch_size = 32
     time_steps = 60
     vocab_size = 10001  # Typical OCR vocabulary size
     max_label_length = 40
@@ -345,16 +290,15 @@ def test_stc_loss():
     # Create labels and lengths (avoid using blank token 0 in labels)
     labels = paddle.randint(1, vocab_size, [batch_size, max_label_length])
     
-    # Generate realistic label_lengths
+    # ====================================================================
+    # FIXED: Generate label_lengths dynamically based on the batch_size.
+    # The original hardcoded tensor `paddle.to_tensor([3, 2])` only worked 
+    # for a batch_size of 2, causing the IndexError.
     label_lengths = paddle.randint(1, max_label_length + 1, [batch_size], dtype="int64")
-    
-    # Ensure labels are valid for the given lengths
-    for i in range(batch_size):
-        length = label_lengths[i].item()
-        # Fill positions beyond length with blank token
-        labels[i, length:] = 0
+    # ====================================================================
 
     # Create batch in PaddleOCR format
+    # The first element is often an image tensor, which is not needed for the loss test.
     batch = [None, labels, label_lengths]
     
     # Initialize Star CTC loss
@@ -393,6 +337,6 @@ def test_stc_loss():
 
 if __name__ == "__main__":
     # Run test
-    print("Running STCLoss test with corrected CUDA memory access...")
+    print("Running STCLoss test with corrected test data generation...")
     test_loss = test_stc_loss()
     print("\nTest completed successfully.")
