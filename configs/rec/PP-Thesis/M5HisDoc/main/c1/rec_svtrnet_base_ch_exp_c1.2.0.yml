@@ -128,7 +128,7 @@ Train:
     ext_op_transform_idx: 1
     label_file_list:
       - ./train_data/train.txt
-      - ./train_data/hisdoc1b_500k.txt
+      - ./train_data/hisdoc1b_200k.txt
     transforms:
       - DecodeImage:
           img_mode: BGR
