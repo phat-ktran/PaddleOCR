@@ -51,8 +51,12 @@ class BaseModel(nn.Layer):
             self.use_backbone = False
         else:
             self.use_backbone = True
+            freeze_params = config["Backbone"].pop("freeze_params", False)
             config["Backbone"]["in_channels"] = in_channels
             self.backbone = build_backbone(config["Backbone"], model_type)
+            if freeze_params:
+                for param in self.backbone.parameters():
+                    param.trainable = False
             in_channels = self.backbone.out_channels
 
         # build neck
