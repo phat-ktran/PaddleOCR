@@ -28,6 +28,7 @@ from .sast_postprocess import SASTPostProcess
 from .fce_postprocess import FCEPostProcess
 from .rec_postprocess import (
     CTCLabelDecode,
+    MultiHeadLabelDecode,
     BeamCTCLabelDecode,
     CTCLabelDecodeWithUnk,
     AttnLabelDecode,
