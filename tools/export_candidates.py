@@ -133,6 +133,7 @@ def main():
         else:  # base rec model
             config["Architecture"]["Head"]["out_channels"] = char_num
 
+    config["Architecture"]["return_all_feats"] = True
     model = build_model(config["Architecture"])
 
     load_model(config, model)
@@ -195,7 +196,7 @@ def main():
             images = np.expand_dims(batch[0], axis=0)
             images = paddle.to_tensor(images)
             
-            preds = model.forward(images, batch[2:])
+            preds = model.forward(images, batch[1:])
             post_result = post_process_class(preds, **kwargs)
 
             info = json.dumps(map_to_json_schema(post_result), ensure_ascii=False)
