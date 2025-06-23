@@ -1310,8 +1310,8 @@ class NRTRLabelDecode(BaseRecLabelDecode):
             if preds_id[0][0] == 2:
                 preds_idx = preds_id[:, 1:]
                 preds_prob = preds_prob[:, 1:]
-                candidates_indices = candidates_indices[:, 1:, :]
-                candidates_probs = candidates_probs[:, 1:, :]
+                candidates_indices = candidates_indices[:, :, :]
+                candidates_probs = candidates_probs[:, :, :]
             else:
                 preds_idx = preds_id
             text = self.decode(preds_idx, preds_prob, candidates_indices, candidates_probs, is_remove_duplicate=False)
