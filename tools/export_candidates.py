@@ -95,49 +95,34 @@ def prepare_args(global_config):
     if config["PostProcess"]["name"] == "BeamCTCLabelDecode":
         kwargs["use_beam_search"] = global_config.get("use_beam_search", False)
         kwargs["beam_width"] = global_config.get("beam_width", 5)
-        kwargs["return_all_beams"] = global_config.get(
-            "return_all_beams", False
-        )
+        kwargs["return_all_beams"] = global_config.get("return_all_beams", False)
     elif config["PostProcess"]["name"] == "MultiHeadLabelDecode":
         if "BeamCTCLabelDecode" in config["PostProcess"]["decoder_list"]:
             kwargs["ctc"] = {
                 "use_beam_search": global_config.get("use_beam_search", False),
                 "beam_width": global_config.get("beam_width", False),
-                "return_all_beams": global_config.get(
-                    "return_all_beams", False
-                ),
+                "return_all_beams": global_config.get("return_all_beams", False),
             }
         kwargs["gtc"] = {}
-    
+
     return kwargs
-    
-def init_transforms(keys, global_config):
+
+
+def init_transforms(keys, global_config, ignore_encode=True):
     transforms = []
     for op in config["Eval"]["dataset"]["transforms"]:
         op_name = list(op)[0]
-        if "Label" in op_name:
+        if "Label" in op_name and ignore_encode:
             continue
         elif op_name in ["RecResizeImg"]:
             op[op_name]["infer_mode"] = True
         elif op_name == "KeepKeys":
-            if config["Architecture"]["algorithm"] == "SRN":
-                op[op_name]["keep_keys"] = [
-                    "image",
-                    "encoder_word_pos",
-                    "gsrm_word_pos",
-                    "gsrm_slf_attn_bias1",
-                    "gsrm_slf_attn_bias2",
-                ]
-            elif config["Architecture"]["algorithm"] == "SAR":
-                op[op_name]["keep_keys"] = ["image", "valid_ratio"]
-            elif config["Architecture"]["algorithm"] == "RobustScanner":
-                op[op_name]["keep_keys"] = ["image", "valid_ratio", "word_positons"]
-            else:
-                op[op_name]["keep_keys"] = keys
+            op[op_name]["keep_keys"] = keys
         transforms.append(op)
     global_config["infer_mode"] = True
     ops = create_operators(transforms, global_config)
     return ops
+
 
 def main():
     global_config = config["Global"]
@@ -188,19 +173,21 @@ def main():
             batch = transform(data, ops)
             images = np.expand_dims(batch[0], axis=0)
             images = paddle.to_tensor(images)
-            
+
             kwargs = prepare_args(global_config)
-            
+
             preds = model.forward(images)
             post_result = post_process_class(preds, **kwargs)
             post_result = map_to_json_schema(post_result)
-            
-            ops = init_transforms(["image", "label_ctc", "label_gtc", "length"], global_config)
+
+            ops = init_transforms(
+                ["image", "label_ctc", "label_gtc", "length"], global_config, False
+            )
             data = {"image": img, "label": post_result["ctc"][0]["text"]}
             batch = transform(data, ops)
             images = np.expand_dims(batch[0], axis=0)
             images = paddle.to_tensor(images)
-            
+
             preds = model.forward(images, batch[1:])
             post_result = post_process_class(preds, **kwargs)
 
@@ -208,7 +195,7 @@ def main():
             if info is not None:
                 logger.info("\t result: {}".format(info))
                 fout.write(file + "\t" + info + "\n")
-                
+
             ops = init_transforms(["image"], global_config)
     logger.info("success!")
 
