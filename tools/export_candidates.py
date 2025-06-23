@@ -180,32 +180,36 @@ def main():
             post_result = post_process_class(preds, **kwargs)
             post_result = map_to_json_schema(post_result)
 
-            ops = init_transforms(
-                ["image", "label_ctc", "label_gtc", "length"], global_config, False
-            )
-            data = {"image": img, "label": post_result["ctc"][0]["text"]}
-            batch = transform(data, ops)
-            images = np.expand_dims(batch[0], axis=0)
-            images = paddle.to_tensor(images)
-            
-            label_ctc = np.expand_dims(batch[1], axis=0)
-            label_ctc = paddle.to_tensor(label_ctc)
-
-            label_gtc = np.expand_dims(batch[2], axis=0)
-            label_gtc = paddle.to_tensor(label_gtc)
-
-            length = np.expand_dims(batch[3], axis=0)
-            length = paddle.to_tensor(length)
-
-            batch = (images, label_ctc, label_gtc, length)
-            preds = model.forward(images, batch[1:])
-            post_result = post_process_class(preds, **kwargs)
-
-            info = json.dumps(map_to_json_schema(post_result), ensure_ascii=False)
+            if len(post_result["ctc"][0]["text"]) > 0:
+                ops = init_transforms(
+                    ["image", "label_ctc", "label_gtc", "length"], global_config, False
+                )
+                with open(file, "rb") as f:
+                    img = f.read()
+                    data = {"image": img, "label": post_result["ctc"][0]["text"]}
+                batch = transform(data, ops)
+                images = np.expand_dims(batch[0], axis=0)
+                images = paddle.to_tensor(images)
+                
+                label_ctc = np.expand_dims(batch[1], axis=0)
+                label_ctc = paddle.to_tensor(label_ctc)
+    
+                label_gtc = np.expand_dims(batch[2], axis=0)
+                label_gtc = paddle.to_tensor(label_gtc)
+    
+                length = np.expand_dims(batch[3], axis=0)
+                length = paddle.to_tensor(length)
+    
+                batch = (images, label_ctc, label_gtc, length)
+                preds = model.forward(images, batch[1:])
+                post_result = post_process_class(preds, **kwargs)
+                post_result = map_to_json_schema(post_result)
+    
+            info = json.dumps(post_result, ensure_ascii=False)
             if info is not None:
                 logger.info("\t result: {}".format(info))
                 fout.write(file + "\t" + info + "\n")
-
+    
             ops = init_transforms(["image"], global_config)
     logger.info("success!")
 
