@@ -187,7 +187,17 @@ def main():
             batch = transform(data, ops)
             images = np.expand_dims(batch[0], axis=0)
             images = paddle.to_tensor(images)
+            
+            label_ctc = np.expand_dims(batch[1], axis=0)
+            label_ctc = paddle.to_tensor(label_ctc)
 
+            label_gtc = np.expand_dims(batch[2], axis=0)
+            label_gtc = paddle.to_tensor(label_gtc)
+
+            length = np.expand_dims(batch[3], axis=0)
+            length = paddle.to_tensor(length)
+
+            batch = (images, label_ctc, label_gtc, length)
             preds = model.forward(images, batch[1:])
             post_result = post_process_class(preds, **kwargs)
 
