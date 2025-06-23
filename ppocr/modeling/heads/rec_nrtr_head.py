@@ -159,7 +159,7 @@ class Transformer(nn.Layer):
             else:
                 if targets:
                     max_len = targets[1].max()
-                    tgt = targets[0][:, : 2 + max_len]
+                    tgt = targets[0][:, : 2 + max_len] if max_len > 0 else None
                 else:
                     tgt = None
                 return self.forward_test(src, tgt, return_candidates_per_timestep, k)
@@ -245,9 +245,16 @@ class Transformer(nn.Layer):
             )
             
         if return_candidates_per_timestep:
-            candidates_indices = paddle.transpose(paddle.stack(candidates_indices_list, axis=0), (1,0,2))
-            candidates_probs = paddle.transpose(paddle.stack(candidates_probs_list, axis=0), (1,0,2))
-            return [dec_seq, dec_prob, candidates_indices, candidates_probs]
+            # Handle empty candidates list
+            if len(candidates_indices_list) == 0:
+                # Return empty tensors with correct shape
+                empty_indices = paddle.zeros((bs, 0, k), dtype=paddle.int64)
+                empty_probs = paddle.zeros((bs, 0, k), dtype=paddle.float32)
+                return [dec_seq, dec_prob, empty_indices, empty_probs]
+            else:
+                candidates_indices = paddle.transpose(paddle.stack(candidates_indices_list, axis=0), (1,0,2))
+                candidates_probs = paddle.transpose(paddle.stack(candidates_probs_list, axis=0), (1,0,2))
+                return [dec_seq, dec_prob, candidates_indices, candidates_probs]
         else:
             return [dec_seq, dec_prob]
 
