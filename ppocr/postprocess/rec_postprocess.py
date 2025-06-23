@@ -1342,16 +1342,24 @@ class MultiHeadLabelDecode(object):
             if name == "SARLabelDecode":
                 # sar head
                 sar_args = self.decode_list[idx][name]
-                self.sar_decoder = SARLabelDecode(character_dict_path, use_space_char, **sar_args)
+                if sar_args is not None:
+                    kwargs.update(sar_args)
+                self.sar_decoder = SARLabelDecode(character_dict_path, use_space_char, **kwargs)
             elif name == "NRTRLabelDecode":
                 gtc_args = self.decode_list[idx][name]
-                self.gtc_decoder = NRTRLabelDecode(character_dict_path, use_space_char, **gtc_args)
+                if gtc_args is not None:
+                    kwargs.update(gtc_args)
+                self.gtc_decoder = NRTRLabelDecode(character_dict_path, use_space_char, **kwargs)
             elif name == "CTCLabelDecode":
                 ctc_args = self.decode_list[idx][name]
-                self.ctc_decoder = CTCLabelDecode(character_dict_path, use_space_char, **ctc_args)
+                if ctc_args is not None:
+                    kwargs.update(ctc_args)
+                self.ctc_decoder = CTCLabelDecode(character_dict_path, use_space_char, **kwargs)
             elif name == "BeamCTCLabelDecode":
                 ctc_args = self.decode_list[idx][name]
-                self.ctc_decoder = BeamCTCLabelDecode(character_dict_path, use_space_char, **ctc_args)
+                if ctc_args is not None:
+                    kwargs.update(ctc_args)
+                self.ctc_decoder = BeamCTCLabelDecode(character_dict_path, use_space_char, **kwargs)
             else:
                 raise ValueError(f"{name} is not supported in MultiHeadLabelDecode")
     
