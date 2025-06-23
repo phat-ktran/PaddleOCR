@@ -197,7 +197,6 @@ def main():
             
             preds = model.forward(images, batch[2:])
             post_result = post_process_class(preds, **kwargs)
-            post_result = map_to_json_schema(post_result)
 
             info = json.dumps(map_to_json_schema(post_result), ensure_ascii=False)
             if info is not None:
