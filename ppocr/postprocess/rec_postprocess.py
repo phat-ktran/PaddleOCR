@@ -1294,6 +1294,31 @@ class NRTRLabelDecode(BaseRecLabelDecode):
             if label is None:
                 return text
             label = self.decode(label[:, 1:])
+        elif len(preds) == 4:
+            preds_id = preds[0]
+            preds_prob = preds[1]
+            candidates_indices = preds[2]
+            candidates_probs = preds[3]
+            if isinstance(preds_id, paddle.Tensor):
+                preds_id = preds_id.numpy()
+            if isinstance(preds_prob, paddle.Tensor):
+                preds_prob = preds_prob.numpy()
+            if isinstance(candidates_indices, paddle.Tensor):
+                candidates_indices = candidates_indices.numpy()
+            if isinstance(candidates_probs, paddle.Tensor):
+                candidates_probs = candidates_probs.numpy()
+            if preds_id[0][0] == 2:
+                preds_idx = preds_id[:, 1:]
+                preds_prob = preds_prob[:, 1:]
+                candidates_indices = candidates_indices[:, 1:, :]
+                candidates_probs = candidates_probs[:, 1:, :]
+            else:
+                preds_idx = preds_id
+            text = self.decode(preds_idx, preds_prob, candidates_indices, candidates_probs, is_remove_duplicate=False)
+            if label is None:
+                return text
+            label = self.decode(label[:, 1:])
+            return text, label
         else:
             if isinstance(preds, paddle.Tensor):
                 preds = preds.numpy()
@@ -1309,13 +1334,14 @@ class NRTRLabelDecode(BaseRecLabelDecode):
         dict_character = ["blank", "<unk>", "<s>", "</s>"] + dict_character
         return dict_character
 
-    def decode(self, text_index, text_prob=None, is_remove_duplicate=False):
-        """convert text-index into text-label."""
+    def decode(self, text_index, text_prob=None, candidates_indices=None, candidates_probs=None, is_remove_duplicate=False):
+        """Convert text-index into text-label."""
         result_list = []
         batch_size = len(text_index)
         for batch_idx in range(batch_size):
             char_list = []
             conf_list = []
+            candidates_list = []
             for idx in range(len(text_index[batch_idx])):
                 try:
                     char_idx = self.character[int(text_index[batch_idx][idx])]
@@ -1328,8 +1354,16 @@ class NRTRLabelDecode(BaseRecLabelDecode):
                     conf_list.append(text_prob[batch_idx][idx])
                 else:
                     conf_list.append(1)
+                if candidates_indices is not None and candidates_probs is not None:
+                    topk_chars = [self.character[int(cand)] for cand in candidates_indices[batch_idx, idx]]
+                    topk_probs = candidates_probs[batch_idx, idx]
+                    candidates_list.append(list(zip(topk_chars, topk_probs)))
             text = "".join(char_list)
-            result_list.append((text, np.mean(conf_list).tolist()))
+            mean_conf = np.mean(conf_list).tolist() if conf_list else 1.0
+            if candidates_list:
+                result_list.append((text, mean_conf, candidates_list))
+            else:
+                result_list.append((text, mean_conf))
         return result_list
 
 
