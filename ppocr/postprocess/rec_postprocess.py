@@ -1362,6 +1362,8 @@ class MultiHeadLabelDecode(object):
                 self.ctc_decoder = BeamCTCLabelDecode(character_dict_path, use_space_char, **kwargs)
             else:
                 raise ValueError(f"{name} is not supported in MultiHeadLabelDecode")
+        if hasattr(self, "ctc_decoder"):
+            self.character = getattr(self.ctc_decoder, "character")
     
     def __call__(self, head_out, **kwargs):
         # Currently, MultiHeadLabelDecode only supports test-time decoding
