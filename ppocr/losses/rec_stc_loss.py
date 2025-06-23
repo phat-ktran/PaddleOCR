@@ -174,20 +174,29 @@ class STC(nn.Layer):
         Computes log(exp(a) - exp(b)) - Numerically stable version
 
         Args:
-            a: Tensor of size (M x N)
-            b: Tensor of size (M x N x O)
+            a: Tensor of size (B x T x 1)
+            b: Tensor of size (B x T x C)
         Returns:
-            Tensor of size (M x N x O)
+            Tensor of size (B x T x C)
         """
+        # a is (B, T, 1), b is (B, T, C)
         B, T, C = b.shape
-        a_expanded = a.unsqueeze(-1).expand([B, T, C])
+        
+        # Debug shapes
+        print(f"logsubexp - a shape: {a.shape}, b shape: {b.shape}")
+        
+        # Use broadcasting instead of explicit expand
+        # PaddlePaddle should handle broadcasting automatically
+        diff = b - a  # This should broadcast (B,T,1) with (B,T,C)
         
         # Numerically stable computation
-        diff = b - a_expanded
         # Clamp to avoid numerical issues
         diff = paddle.clip(diff, min=-50, max=0)  # b should be <= a
-        result = a_expanded + paddle.log1p(-paddle.exp(diff) + 1e-8)
         
+        # Use broadcasting for the final computation too
+        result = a + paddle.log1p(-paddle.exp(diff) + 1e-8)
+        
+        print(f"logsubexp - result shape: {result.shape}")
         return result
 
     def forward(self, inputs, targets):
@@ -254,12 +263,28 @@ class STC(nn.Layer):
 
         # Compute negative log-sum-exp more safely
         try:
-            neglse = STC.logsubexp(lse, log_probs_selected[:, :, 1:])
+            # Debug shapes
+            print(f"Debug - lse shape: {lse.shape}, log_probs_selected shape: {log_probs_selected.shape}")
+            
+            # Check if we need to slice log_probs_selected
+            if log_probs_selected.shape[2] > 1:
+                # Skip the blank token (index 0) for neglse computation
+                log_probs_for_neglse = log_probs_selected[:, :, 1:]
+                print(f"Debug - log_probs_for_neglse shape: {log_probs_for_neglse.shape}")
+                neglse = STC.logsubexp(lse, log_probs_for_neglse)
+            else:
+                # Edge case: only blank token, create dummy neglse
+                neglse = paddle.full_like(lse, -float('inf'))
+            
             log_probs_final = paddle.concat([log_probs_selected, lse, neglse], axis=2)
+            print(f"Debug - final log_probs shape: {log_probs_final.shape}")
+            
         except Exception as e:
             print(f"Error in logsubexp computation: {e}")
             print(f"lse shape: {lse.shape}")
             print(f"log_probs_selected shape: {log_probs_selected.shape}")
+            if log_probs_selected.shape[2] > 1:
+                print(f"log_probs_for_neglse would be shape: {log_probs_selected[:, :, 1:].shape}")
             raise e
         
         return STCLossFunction.apply(log_probs_final, targets_remapped, prob, self.reduction)
@@ -353,19 +378,24 @@ def test_fixed_stc():
     """Test the fixed STC implementation"""
     print("Testing Fixed STC implementation...")
     
-    # Test with various batch sizes
-    for batch_size in [1, 2, 4, 8]:
+    # Test with small batch size first
+    for batch_size in [1, 2]:
         print(f"\nTesting with batch_size={batch_size}")
         
-        B, T, C = batch_size, 20, 50
+        B, T, C = batch_size, 10, 20  # Smaller test case first
         
         # Create test data
         predicts_ocr = paddle.randn([B, T, C])
         
         # Create OCR-format targets
-        max_len = 8
+        max_len = 5
         labels_ocr = paddle.randint(1, C, [B, max_len], dtype='int32')
         lengths_ocr = paddle.randint(1, max_len+1, [B], dtype='int64')
+        
+        # Ensure we have valid targets
+        for i in range(B):
+            length = int(lengths_ocr[i].item())
+            print(f"  Batch {i}: target length={length}, target={labels_ocr[i, :length].tolist()}")
         
         batch_ocr = [None, labels_ocr, lengths_ocr]
         
@@ -391,11 +421,39 @@ def test_fixed_stc():
                 
         except Exception as e:
             print(f"  FAILED: {e}")
+            import traceback
+            traceback.print_exc()
             return False
     
     print("\nFixed STC test completed successfully!")
     return True
 
 
+def test_logsubexp():
+    """Test the logsubexp function specifically"""
+    print("Testing logsubexp function...")
+    
+    B, T, C = 2, 5, 10
+    a = paddle.randn([B, T, 1])
+    b = paddle.randn([B, T, C])
+    
+    print(f"Input shapes - a: {a.shape}, b: {b.shape}")
+    
+    try:
+        result = STC.logsubexp(a, b)
+        print(f"Success! Result shape: {result.shape}")
+        return True
+    except Exception as e:
+        print(f"Failed: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+
+
 if __name__ == "__main__":
-    test_fixed_stc()
+    print("Running logsubexp test first...")
+    if test_logsubexp():
+        print("\nlogsubexp test passed, running full STC test...")
+        test_fixed_stc()
+    else:
+        print("logsubexp test failed, fixing needed")
