@@ -157,7 +157,8 @@ class MultiHead(nn.Layer):
                 sar_out = self.sar_head(x, targets[1:])
                 head_out["sar"] = sar_out
             else:
-                gtc_out = self.gtc_head(self.before_gtc(x), targets[1:], self.return_candidates_per_timestep, self.k)
+                targets_arg = targets[1:] if targets else None
+                gtc_out = self.gtc_head(self.before_gtc(x), targets_arg, self.return_candidates_per_timestep, self.k)
                 head_out["gtc"] = gtc_out
         # eval mode for single ctc decoding
         if not self.training and not self.return_all_feats:
