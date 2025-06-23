@@ -110,6 +110,34 @@ def prepare_args(global_config):
         kwargs["gtc"] = {}
     
     return kwargs
+    
+def init_transforms(keys, global_config):
+    transforms = []
+    for op in config["Eval"]["dataset"]["transforms"]:
+        op_name = list(op)[0]
+        if "Label" in op_name:
+            continue
+        elif op_name in ["RecResizeImg"]:
+            op[op_name]["infer_mode"] = True
+        elif op_name == "KeepKeys":
+            if config["Architecture"]["algorithm"] == "SRN":
+                op[op_name]["keep_keys"] = [
+                    "image",
+                    "encoder_word_pos",
+                    "gsrm_word_pos",
+                    "gsrm_slf_attn_bias1",
+                    "gsrm_slf_attn_bias2",
+                ]
+            elif config["Architecture"]["algorithm"] == "SAR":
+                op[op_name]["keep_keys"] = ["image", "valid_ratio"]
+            elif config["Architecture"]["algorithm"] == "RobustScanner":
+                op[op_name]["keep_keys"] = ["image", "valid_ratio", "word_positons"]
+            else:
+                op[op_name]["keep_keys"] = keys
+        transforms.append(op)
+    global_config["infer_mode"] = True
+    ops = create_operators(transforms, global_config)
+    return ops
 
 def main():
     global_config = config["Global"]
@@ -139,31 +167,7 @@ def main():
     load_model(config, model)
 
     # create data ops
-    transforms = []
-    for op in config["Eval"]["dataset"]["transforms"]:
-        op_name = list(op)[0]
-        if "Label" in op_name:
-            continue
-        elif op_name in ["RecResizeImg"]:
-            op[op_name]["infer_mode"] = True
-        elif op_name == "KeepKeys":
-            if config["Architecture"]["algorithm"] == "SRN":
-                op[op_name]["keep_keys"] = [
-                    "image",
-                    "encoder_word_pos",
-                    "gsrm_word_pos",
-                    "gsrm_slf_attn_bias1",
-                    "gsrm_slf_attn_bias2",
-                ]
-            elif config["Architecture"]["algorithm"] == "SAR":
-                op[op_name]["keep_keys"] = ["image", "valid_ratio"]
-            elif config["Architecture"]["algorithm"] == "RobustScanner":
-                op[op_name]["keep_keys"] = ["image", "valid_ratio", "word_positons"]
-            else:
-                op[op_name]["keep_keys"] = ["image"]
-        transforms.append(op)
-    global_config["infer_mode"] = True
-    ops = create_operators(transforms, global_config)
+    ops = init_transforms(["image"], global_config)
 
     save_res_path = config["Global"].get(
         "save_res_path", "./output/rec/predicts_rec.txt"
@@ -190,7 +194,8 @@ def main():
             preds = model.forward(images)
             post_result = post_process_class(preds, **kwargs)
             post_result = map_to_json_schema(post_result)
-
+            
+            ops = init_transforms(["image", "label_ctc", "label_gtc", "length"], global_config)
             data = {"image": img, "label": post_result["ctc"][0]["text"]}
             batch = transform(data, ops)
             images = np.expand_dims(batch[0], axis=0)
@@ -203,6 +208,8 @@ def main():
             if info is not None:
                 logger.info("\t result: {}".format(info))
                 fout.write(file + "\t" + info + "\n")
+                
+            ops = init_transforms(["image"], global_config)
     logger.info("success!")
 
 
