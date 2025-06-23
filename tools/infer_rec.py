@@ -209,14 +209,6 @@ def main():
                 preds = model(images, img_metas)
             elif config["Architecture"]["algorithm"] == "CAN":
                 preds = model([images, image_mask, label])
-            elif config["Architecture"]["Head"]["name"] == "MultiHead":
-                kwargs = {
-                    "return_candidates_per_timestep": global_config.get(
-                        "return_candidates_per_timestep", False
-                    ),
-                    "k": global_config.get("k", None),
-                }
-                preds = model(images, **kwargs)
             else:
                 preds = model(images)
 

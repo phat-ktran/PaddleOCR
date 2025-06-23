@@ -27,9 +27,6 @@ Global:
   use_space_char: false
   max_text_length: &max_text_length 25
   d2s_train_image_shape: [3, 48, 480]
-  
-  return_candidates_per_timestep: true
-  k: 5
 
 Optimizer:
   name: Adam
@@ -62,6 +59,8 @@ Architecture:
       stage4: [1024, 384, 2048, 1, True, True, 5, 6, [2, 1]]
   Head:
     name: MultiHead
+    k: 5
+    return_candidates_per_timestep: true
     head_list:
       - CTCHead:
           Neck:

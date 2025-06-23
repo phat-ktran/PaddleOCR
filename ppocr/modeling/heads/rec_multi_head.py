@@ -65,6 +65,8 @@ class MultiHead(nn.Layer):
         self.use_pos = kwargs.get("use_pos", False)
         self.return_all_feats = kwargs.get("return_all_feats", False)
         self.in_channels = in_channels
+        self.return_candidates_per_timestep = kwargs.get("return_candidates_per_timestep", False)
+        self.k = kwargs.get("k", None)
         if self.use_pool:
             self.pool_kernel_size = kwargs.get("pool_kernel_size", [3, 2])
             self.pool_stride = kwargs.get("pool_stride", self.pool_kernel_size)
@@ -155,9 +157,7 @@ class MultiHead(nn.Layer):
                 sar_out = self.sar_head(x, targets[1:])
                 head_out["sar"] = sar_out
             else:
-                return_candidates_per_timestep = kwargs.get("return_candidates_per_timestep", False)
-                k = kwargs.get("k", None)
-                gtc_out = self.gtc_head(self.before_gtc(x), targets[1:], return_candidates_per_timestep, k)
+                gtc_out = self.gtc_head(self.before_gtc(x), targets[1:], self.return_candidates_per_timestep, self.k)
                 head_out["gtc"] = gtc_out
         # eval mode for single ctc decoding
         if not self.training and not self.return_all_feats:
