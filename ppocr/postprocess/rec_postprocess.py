@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from collections import defaultdict
 import os
 import numpy as np
 import paddle
@@ -216,6 +217,347 @@ class CTCLabelDecode(BaseRecLabelDecode):
                 wh_ratio = kwargs["wh_ratio_list"][rec_idx]
                 max_wh_ratio = kwargs["max_wh_ratio"]
                 rec[2][0] = rec[2][0] * (wh_ratio / max_wh_ratio)
+        if label is None:
+            return text
+        label = self.decode(label)
+        return text, label
+
+    def add_special_char(self, dict_character):
+        dict_character = ["blank"] + dict_character
+        return dict_character
+
+
+class BeamCTCLabelDecode(BaseRecLabelDecode):
+    def __init__(self, character_dict_path=None, use_space_char=False, **kwargs):
+        super(BeamCTCLabelDecode, self).__init__(character_dict_path, use_space_char)
+
+    def beam_search_decode(self, preds, beam_width=5, return_all_beams=False):
+        """
+        CTC beam search decoder with detailed timestep tracking
+
+        Args:
+            preds: prediction probabilities of shape [batch_size, seq_len, num_classes]
+            beam_width: number of beams to keep during search
+            return_all_beams: if True, return all beams; if False, return only the best beam
+
+        Returns:
+            If return_all_beams=False: List of tuples (decoded_indices, decoded_probabilities) for each batch
+            If return_all_beams=True: List of lists, where each inner list contains all beam candidates
+                                     as tuples (decoded_indices, decoded_probabilities, rank, timestep_info)
+        """
+        batch_size, seq_len, num_classes = preds.shape
+        blank_id = 0  # CTC blank token
+
+        results = []
+
+        for batch_idx in range(batch_size):
+            # Initialize beam with empty sequence
+            # Each beam item: (log_prob, sequence, last_char, timestep_probs, alignment)
+            # timestep_probs: list of probabilities for each character in sequence
+            # alignment: list of timestep indices where each character was added
+            beams = [(0.0, [], -1, [], [])]
+
+            for t in range(seq_len):
+                new_beams = defaultdict(lambda: (float("-inf"), [], []))
+
+                for log_prob, seq, last_char, timestep_probs, alignment in beams:
+                    for c in range(num_classes):
+                        char_prob = preds[batch_idx, t, c]
+                        char_log_prob = np.log(char_prob + 1e-8)
+                        new_log_prob = log_prob + char_log_prob
+
+                        if c == blank_id:
+                            # Blank token - no character added
+                            key = (tuple(seq), last_char)
+                            if new_log_prob > new_beams[key][0]:
+                                new_beams[key] = (
+                                    new_log_prob,
+                                    timestep_probs.copy(),
+                                    alignment.copy(),
+                                )
+                        else:
+                            # Non-blank token
+                            if c == last_char:
+                                # Same character as last - only add if we had a blank or it's different
+                                if len(seq) == 0 or seq[-1] != c:
+                                    new_seq = seq + [c]
+                                    new_timestep_probs = timestep_probs + [char_prob]
+                                    new_alignment = alignment + [t]
+                                    key = (tuple(new_seq), c)
+                                    if new_log_prob > new_beams[key][0]:
+                                        new_beams[key] = (
+                                            new_log_prob,
+                                            new_timestep_probs,
+                                            new_alignment,
+                                        )
+                                else:
+                                    # Repeat character, keep original sequence but update last character's probability if better
+                                    key = (tuple(seq), c)
+                                    updated_probs = timestep_probs.copy()
+                                    updated_alignment = alignment.copy()
+                                    # Update the last character's probability if this timestep is more confident
+                                    if (
+                                        len(updated_probs) > 0
+                                        and char_prob > updated_probs[-1]
+                                    ):
+                                        updated_probs[-1] = char_prob
+                                        updated_alignment[-1] = t
+                                    if new_log_prob > new_beams[key][0]:
+                                        new_beams[key] = (
+                                            new_log_prob,
+                                            updated_probs,
+                                            updated_alignment,
+                                        )
+                            else:
+                                # Different character - add to sequence
+                                new_seq = seq + [c]
+                                new_timestep_probs = timestep_probs + [char_prob]
+                                new_alignment = alignment + [t]
+                                key = (tuple(new_seq), c)
+                                if new_log_prob > new_beams[key][0]:
+                                    new_beams[key] = (
+                                        new_log_prob,
+                                        new_timestep_probs,
+                                        new_alignment,
+                                    )
+
+                # Keep top beam_width beams
+                beams = []
+                for (seq, last_char), (log_prob, timestep_probs, alignment) in sorted(
+                    new_beams.items(), key=lambda x: x[1][0], reverse=True
+                )[:beam_width]:
+                    beams.append(
+                        (log_prob, list(seq), last_char, timestep_probs, alignment)
+                    )
+
+            # Process results based on return_all_beams flag
+            if return_all_beams:
+                # Return all beams with their rankings and timestep info
+                beam_candidates = []
+                if beams:
+                    # Sort beams by probability (highest first)
+                    sorted_beams = sorted(beams, key=lambda x: x[0], reverse=True)
+                    for rank, (
+                        log_prob,
+                        seq,
+                        _,
+                        timestep_probs,
+                        alignment,
+                    ) in enumerate(sorted_beams):
+                        prob = np.exp(log_prob)
+                        timestep_info = {
+                            "char_probs": timestep_probs,
+                            "alignment": alignment,
+                            "avg_char_conf": np.mean(timestep_probs)
+                            if timestep_probs
+                            else 0.0,
+                            "min_char_conf": np.min(timestep_probs)
+                            if timestep_probs
+                            else 0.0,
+                            "max_char_conf": np.max(timestep_probs)
+                            if timestep_probs
+                            else 0.0,
+                        }
+                        beam_candidates.append((seq, prob, rank + 1, timestep_info))
+                else:
+                    timestep_info = {
+                        "char_probs": [],
+                        "alignment": [],
+                        "avg_char_conf": 0.0,
+                        "min_char_conf": 0.0,
+                        "max_char_conf": 0.0,
+                    }
+                    beam_candidates.append(([], 0.0, 1, timestep_info))
+                results.append(beam_candidates)
+            else:
+                # Return only the best beam (original behavior)
+                if beams:
+                    best_log_prob, best_seq, _, best_timestep_probs, best_alignment = (
+                        max(beams, key=lambda x: x[0])
+                    )
+                    best_prob = np.exp(best_log_prob)
+                    timestep_info = {
+                        "char_probs": best_timestep_probs,
+                        "alignment": best_alignment,
+                        "avg_char_conf": np.mean(best_timestep_probs)
+                        if best_timestep_probs
+                        else 0.0,
+                    }
+                    results.append((best_seq, best_prob, timestep_info))
+                else:
+                    timestep_info = {
+                        "char_probs": [],
+                        "alignment": [],
+                        "avg_char_conf": 0.0,
+                    }
+                    results.append(([], 0.0, timestep_info))
+
+        return results
+
+    def __call__(
+        self,
+        preds,
+        label=None,
+        return_word_box=False,
+        use_beam_search=False,
+        beam_width=5,
+        return_all_beams=False,
+        *args,
+        **kwargs,
+    ):
+        """
+        Decode CTC predictions using either greedy or beam search
+
+        Args:
+            preds: prediction tensor/array
+            label: ground truth labels (optional)
+            return_word_box: whether to return word bounding box info
+            use_beam_search: whether to use beam search instead of greedy decoding
+            beam_width: beam width for beam search (only used if use_beam_search=True)
+            return_all_beams: if True and use_beam_search=True, return all beam candidates
+
+        Returns:
+            If return_all_beams=False: Standard format (text, confidence) tuples
+            If return_all_beams=True: Dictionary with 'best_result' and 'all_beams' keys
+        """
+        if isinstance(preds, tuple) or isinstance(preds, list):
+            preds = preds[-1]
+        if isinstance(preds, paddle.Tensor):
+            preds = preds.numpy()
+
+        if use_beam_search:
+            # Use beam search decoding
+            beam_results = self.beam_search_decode(preds, beam_width, return_all_beams)
+
+            if return_all_beams:
+                # Process all beams for each batch
+                all_beams_results = []
+                best_results = []
+
+                for batch_beams in beam_results:
+                    batch_all_beams = []
+                    best_beam = None
+
+                    for seq, prob, rank in batch_beams:
+                        # Convert indices to text
+                        if len(seq) == 0:
+                            text = ""
+                            conf = prob
+                        else:
+                            # Remove duplicates and blanks
+                            filtered_seq = []
+                            prev_char = -1
+                            for char_idx in seq:
+                                if (
+                                    char_idx != 0 and char_idx != prev_char
+                                ):  # 0 is blank
+                                    filtered_seq.append(char_idx)
+                                prev_char = char_idx
+
+                            if len(filtered_seq) == 0:
+                                text = ""
+                                conf = prob
+                            else:
+                                char_list = [
+                                    self.character[idx]
+                                    for idx in filtered_seq
+                                    if idx < len(self.character)
+                                ]
+                                text = "".join(char_list)
+
+                                if self.reverse:  # for arabic rec
+                                    text = self.pred_reverse(text)
+
+                                conf = prob
+
+                        beam_info = {
+                            "text": text,
+                            "confidence": conf,
+                            "rank": rank,
+                            "raw_indices": seq,
+                        }
+
+                        if return_word_box:
+                            # Add word box info for each beam (simplified)
+                            selection = (
+                                np.ones(len(seq), dtype=bool)
+                                if len(seq) > 0
+                                else np.array([])
+                            )
+                            if len(text) > 0:
+                                word_list, word_col_list, state_list = (
+                                    self.get_word_info(text, selection)
+                                )
+                                beam_info["word_info"] = [
+                                    len(seq),
+                                    word_list,
+                                    word_col_list,
+                                    state_list,
+                                ]
+
+                        batch_all_beams.append(beam_info)
+
+                        # Keep track of best beam (rank 1)
+                        if rank == 1:
+                            if return_word_box:
+                                best_beam = (text, conf, beam_info.get("word_info", []))
+                            else:
+                                best_beam = (text, conf)
+
+                    all_beams_results.append(batch_all_beams)
+                    best_results.append(best_beam)
+
+                # Return both all beams and best results
+                result = {"best_result": best_results, "all_beams": all_beams_results}
+
+                if label is not None:
+                    label_decoded = self.decode(label)
+                    result["label"] = label_decoded
+
+                return result
+
+            else:
+                # Return only best beam (original behavior)
+                preds_idx = []
+                preds_prob = []
+
+                for seq, prob in beam_results:
+                    if len(seq) == 0:
+                        preds_idx.append([0])
+                        preds_prob.append([1.0])
+                    else:
+                        preds_idx.append(seq)
+                        avg_prob = prob ** (1.0 / len(seq)) if len(seq) > 0 else prob
+                        preds_prob.append([avg_prob] * len(seq))
+
+                # Pad sequences to same length
+                max_len = max(len(seq) for seq in preds_idx) if preds_idx else 1
+                for i in range(len(preds_idx)):
+                    while len(preds_idx[i]) < max_len:
+                        preds_idx[i].append(0)
+                        preds_prob[i].append(0.0)
+
+                preds_idx = np.array(preds_idx)
+                preds_prob = np.array(preds_prob)
+        else:
+            # Use greedy decoding (original behavior)
+            preds_idx = preds.argmax(axis=2)
+            preds_prob = preds.max(axis=2)
+
+        # Standard decoding path
+        text = self.decode(
+            preds_idx,
+            preds_prob,
+            is_remove_duplicate=True,
+            return_word_box=return_word_box,
+        )
+
+        if return_word_box:
+            for rec_idx, rec in enumerate(text):
+                wh_ratio = kwargs.get("wh_ratio_list", [1.0] * len(text))[rec_idx]
+                max_wh_ratio = kwargs.get("max_wh_ratio", 1.0)
+                rec[2][0] = rec[2][0] * (wh_ratio / max_wh_ratio)
+
         if label is None:
             return text
         label = self.decode(label)

@@ -28,6 +28,7 @@ from .sast_postprocess import SASTPostProcess
 from .fce_postprocess import FCEPostProcess
 from .rec_postprocess import (
     CTCLabelDecode,
+    BeamCTCLabelDecode,
     CTCLabelDecodeWithUnk,
     AttnLabelDecode,
     SRNLabelDecode,
@@ -72,6 +73,7 @@ def build_post_process(config, global_config=None):
         "SASTPostProcess",
         "FCEPostProcess",
         "CTCLabelDecode",
+        "BeamCTCLabelDecode",
         "CTCLabelDecodeWithUnk",
         "AttnLabelDecode",
         "ClsPostProcess",

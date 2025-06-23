@@ -74,9 +74,9 @@ def main():
                         "out_channels_list"
                     ] = out_channels_list
                 else:
-                    config["Architecture"]["Models"][key]["Head"][
-                        "out_channels"
-                    ] = char_num
+                    config["Architecture"]["Models"][key]["Head"]["out_channels"] = (
+                        char_num
+                    )
         elif config["Architecture"]["Head"]["name"] == "MultiHead":  # multi head
             out_channels_list = {}
             char_num = len(getattr(post_process_class, "character"))
@@ -137,6 +137,9 @@ def main():
 
     infer_imgs = config["Global"]["infer_img"]
     infer_list = config["Global"].get("infer_list", None)
+    use_beam_search = global_config.get("use_beam", False)
+    beam_width = global_config.get("beam_width", 5)
+    return_all_beams = global_config.get("return_all_beams", False)
     with open(save_res_path, "w") as fout:
         for file in get_image_file_list(infer_imgs, infer_list=infer_list):
             logger.info("infer_img: {}".format(file))
@@ -193,16 +196,24 @@ def main():
                 preds = model([images, image_mask, label])
             else:
                 preds = model(images)
-            post_result = post_process_class(preds)
+            post_result = post_process_class(
+                preds,
+                use_beam_search=use_beam_search,
+                beam_width=beam_width,
+                return_all_beams=return_all_beams,
+            )
             info = None
             if isinstance(post_result, dict):
-                rec_info = dict()
-                for key in post_result:
-                    if len(post_result[key][0]) >= 2:
-                        rec_info[key] = {
-                            "label": post_result[key][0][0],
-                            "score": float(post_result[key][0][1]),
-                        }
+                if use_beam_search:
+                    rec_info = post_result
+                else:
+                    rec_info = dict()
+                    for key in post_result:
+                        if len(post_result[key][0]) >= 2:
+                            rec_info[key] = {
+                                "label": post_result[key][0][0],
+                                "score": float(post_result[key][0][1]),
+                            }
                 info = json.dumps(rec_info, ensure_ascii=False)
             elif isinstance(post_result, list) and isinstance(post_result[0], int):
                 # for RFLearning CNT branch
