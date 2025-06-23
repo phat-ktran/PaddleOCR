@@ -38,22 +38,58 @@ from ppocr.utils.utility import get_image_file_list
 import tools.program as program
 
 
-def make_json_serializable(data):
+def map_to_json_schema(data):
     """
-    Recursively traverses a data structure and converts NumPy numeric types
-    to native Python types to make it JSON serializable.
+    Maps input data to the specified JSON schema, converting NumPy types to Python types
+    for JSON serializability and renaming fields for clarity.
+    
+    Args:
+        data (dict): Input data with 'ctc' and 'gtc' keys, as produced by NRTRLabelDecode.
+    
+    Returns:
+        dict: Data mapped to the schema with 'ctc' and 'gtc' containing lists of dictionaries.
     """
-    if isinstance(data, dict):
-        return {key: make_json_serializable(value) for key, value in data.items()}
-    if isinstance(data, list):
-        return [make_json_serializable(element) for element in data]
-    if isinstance(data, np.integer):
-        return int(data)
-    if isinstance(data, np.floating):
-        return float(data)
-    if isinstance(data, np.ndarray):
-        return data.tolist()
-    return data
+    def convert_types(item):
+        """Recursively converts NumPy types to Python types."""
+        if isinstance(item, dict):
+            return {key: convert_types(value) for key, value in item.items()}
+        if isinstance(item, list):
+            return [convert_types(element) for element in item]
+        if isinstance(item, tuple):
+            # Handle tuples like (char, prob) in top_k or (text, conf, candidates)
+            return tuple(convert_types(element) for element in item)
+        if isinstance(item, np.integer):
+            return int(item)
+        if isinstance(item, np.floating):
+            return float(item)
+        if isinstance(item, np.ndarray):
+            return item.tolist()
+        return item
+
+    result = {}
+    
+    # Map 'ctc' to list of {'prediction': str, 'conf': float}
+    if 'ctc' in data:
+        result['ctc'] = [
+            {
+                'prediction': convert_types(item[0]),
+                'conf': convert_types(item[1])
+            }
+            for item in data['ctc']
+        ]
+    
+    # Map 'gtc' to list of {'predictions': str, 'conf': float, 'top_k': list}
+    if 'gtc' in data:
+        result['gtc'] = [
+            {
+                'predictions': convert_types(item[0]),
+                'conf': convert_types(item[1]),
+                'top_k': convert_types(item[2]) if len(item) > 2 else []
+            }
+            for item in data['gtc']
+        ]
+    
+    return result
 
 
 def main():
@@ -237,7 +273,7 @@ def main():
                     kwargs.get("use_beam_search", False)
                     or config["PostProcess"]["name"] == "MultiHeadLabelDecode"
                 ):
-                    rec_info = make_json_serializable(post_result)
+                    rec_info = map_to_json_schema(post_result)
                 else:
                     rec_info = dict()
                     for key in post_result:
