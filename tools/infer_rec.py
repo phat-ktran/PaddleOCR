@@ -37,6 +37,7 @@ from ppocr.utils.save_load import load_model
 from ppocr.utils.utility import get_image_file_list
 import tools.program as program
 
+
 def make_json_serializable(data):
     """
     Recursively traverses a data structure and converts NumPy numeric types
@@ -53,6 +54,7 @@ def make_json_serializable(data):
     if isinstance(data, np.ndarray):
         return data.tolist()
     return data
+
 
 def main():
     global_config = config["Global"]
@@ -153,9 +155,6 @@ def main():
 
     infer_imgs = config["Global"]["infer_img"]
     infer_list = config["Global"].get("infer_list", None)
-    use_beam_search = global_config.get("use_beam_search", False)
-    beam_width = global_config.get("beam_width", 5)
-    return_all_beams = global_config.get("return_all_beams", False)
     with open(save_res_path, "w") as fout:
         for file in get_image_file_list(infer_imgs, infer_list=infer_list):
             logger.info("infer_img: {}".format(file))
@@ -210,17 +209,42 @@ def main():
                 preds = model(images, img_metas)
             elif config["Architecture"]["algorithm"] == "CAN":
                 preds = model([images, image_mask, label])
+            elif config["Architecture"]["Head"]["name"] == "MultiHead":
+                kwargs = {
+                    "return_candidates_per_timestep": global_config.get(
+                        "return_candidates_per_timestep", False
+                    ),
+                    "k": global_config.get("k", None),
+                }
+                preds = model(images, **kwargs)
             else:
                 preds = model(images)
-            post_result = post_process_class(
-                preds,
-                use_beam_search=use_beam_search,
-                beam_width=beam_width,
-                return_all_beams=return_all_beams,
-            )
+
+            kwargs = dict()
+            if config["PostProcess"]["name"] == "BeamCTCLabelDecode":
+                kwargs["use_beam_search"] = global_config.get("use_beam_search", False)
+                kwargs["beam_width"] = global_config.get("beam_width", 5)
+                kwargs["return_all_beams"] = global_config.get(
+                    "return_all_beams", False
+                )
+            elif config["PostProcess"]["name"] == "MultiHeadLabelDecode":
+                if "BeamCTCLabelDecode" in config["PostProcess"]["decoder_list"]:
+                    kwargs["ctc"] = {
+                        "use_beam_search": global_config.get("use_beam_search", False),
+                        "beam_width": global_config.get("beam_width", False),
+                        "return_all_beams": global_config.get(
+                            "return_all_beams", False
+                        ),
+                    }
+                kwargs["gtc"] = {}
+            post_result = post_process_class(preds, **kwargs)
+
             info = None
             if isinstance(post_result, dict):
-                if use_beam_search:
+                if (
+                    kwargs.get("use_beam_search", False)
+                    or config["PostProcess"]["name"] == "MultiHeadLabelDecode"
+                ):
                     rec_info = make_json_serializable(post_result)
                 else:
                     rec_info = dict()

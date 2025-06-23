@@ -137,7 +137,7 @@ class Transformer(nn.Layer):
         logit = self.tgt_word_prj(output)
         return logit
 
-    def forward(self, src, targets=None):
+    def forward(self, src, targets=None,  return_candidates_per_timestep=False, k=None):
         """Take in and process masked source/target sequences.
         Args:
             src: the sequence to the encoder (required).
@@ -157,9 +157,15 @@ class Transformer(nn.Layer):
             if self.beam_size > 0:
                 return self.forward_beam(src)
             else:
-                return self.forward_test(src)
+                return self.forward_test(src, return_candidates_per_timestep, k)
 
-    def forward_test(self, src):
+    def forward_test(self, src, return_candidates_per_timestep=False, k=None):
+        """
+        Returns a list containing:
+            dec_seq: Tensor of shape [batch_size, seq_len] containing the generated token IDs for each sequence in the batch.
+            dec_prob: Tensor of shape [batch_size, seq_len] containing the probabilities of the selected tokens.
+        """
+        k = k if k and return_candidates_per_timestep else 3
         bs = src.shape[0]
         if self.encoder is not None:
             src = self.positional_encoding(src)
@@ -170,6 +176,9 @@ class Transformer(nn.Layer):
             memory = src
         dec_seq = paddle.full((bs, 1), 2, dtype=paddle.int64)
         dec_prob = paddle.full((bs, 1), 1.0, dtype=paddle.float32)
+        if return_candidates_per_timestep:
+            candidates_indices_list = []
+            candidates_probs_list = []
         for len_dec_seq in range(1, paddle.to_tensor(self.max_len)):
             dec_seq_embed = self.embedding(dec_seq)
             dec_seq_embed = self.positional_encoding(dec_seq_embed)
@@ -181,6 +190,11 @@ class Transformer(nn.Layer):
             dec_output = dec_output[:, -1, :]
             word_prob = F.softmax(self.tgt_word_prj(dec_output), axis=-1)
             preds_idx = paddle.argmax(word_prob, axis=-1)
+            preds_prob = paddle.max(word_prob, axis=-1)
+            if return_candidates_per_timestep:
+                topk_probs, topk_indices = paddle.topk(word_prob, k=k, axis=-1)
+                candidates_indices_list.append(topk_indices)
+                candidates_probs_list.append(topk_probs)
             if paddle.equal_all(
                 preds_idx, paddle.full(preds_idx.shape, 3, dtype="int64")
             ):
@@ -192,7 +206,12 @@ class Transformer(nn.Layer):
             dec_prob = paddle.concat(
                 [dec_prob, paddle.reshape(preds_prob, [-1, 1])], axis=1
             )
-        return [dec_seq, dec_prob]
+        if return_candidates_per_timestep:
+            candidates_indices = paddle.transpose(paddle.stack(candidates_indices_list, axis=0), (1,0,2))
+            candidates_probs = paddle.transpose(paddle.stack(candidates_probs_list, axis=0), (1,0,2))
+            return [dec_seq, dec_prob, candidates_indices, candidates_probs]
+        else:
+            return [dec_seq, dec_prob]
 
     def forward_beam(self, images):
         """Translation work in one batch"""

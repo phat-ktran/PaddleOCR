@@ -1333,69 +1333,40 @@ class NRTRLabelDecode(BaseRecLabelDecode):
         return result_list
 
 
-class NomNaTransformerLabelDecode(BaseRecLabelDecode):
-    """Convert between text-label and text-index"""
-
+class MultiHeadLabelDecode(object):
     def __init__(self, character_dict_path=None, use_space_char=False, **kwargs):
-        super(NomNaTransformerLabelDecode, self).__init__(
-            character_dict_path, use_space_char
-        )
-
-    def __call__(self, preds, label=None, *args, **kwargs):
-        if len(preds) == 2:
-            preds_id = preds[0]
-            preds_prob = preds[1]
-            if isinstance(preds_id, paddle.Tensor):
-                preds_id = preds_id.numpy()
-            if isinstance(preds_prob, paddle.Tensor):
-                preds_prob = preds_prob.numpy()
-            if preds_id[0][0] == 2:
-                preds_idx = preds_id[:, 1:]
-                preds_prob = preds_prob[:, 1:]
+        self.decode_list = kwargs.pop("decoder_list")
+        self.gtc_decoder = "sar"
+        for idx, decode_name in enumerate(self.decode_list):
+            name = list(decode_name)[0]
+            if name == "SARLabelDecode":
+                # sar head
+                sar_args = self.decode_list[idx][name]
+                self.sar_decoder = SARLabelDecode(character_dict_path, use_space_char, **sar_args)
+            elif name == "NRTRLabelDecode":
+                gtc_args = self.decode_list[idx][name]
+                self.gtc_decoder = NRTRLabelDecode(character_dict_path, use_space_char, **gtc_args)
+            elif name == "CTCLabelDecode":
+                ctc_args = self.decode_list[idx][name]
+                self.ctc_decoder = CTCLabelDecode(character_dict_path, use_space_char, **ctc_args)
+            elif name == "BeamCTCLabelDecode":
+                ctc_args = self.decode_list[idx][name]
+                self.ctc_decoder = BeamCTCLabelDecode(character_dict_path, use_space_char, **ctc_args)
             else:
-                preds_idx = preds_id
-            text = self.decode(preds_idx, preds_prob, is_remove_duplicate=False)
-            if label is None:
-                return text
-            label = self.decode(label[:, 1:])
+                raise ValueError(f"{name} is not supported in MultiHeadLabelDecode")
+    
+    def __call__(self, head_out, **kwargs):
+        # Currently, MultiHeadLabelDecode only supports test-time decoding
+        ctc_logits = head_out["ctc"]
+        ctc_args, gtc_args, sar_agrs = kwargs.get("ctc", {}), kwargs.get("gtc", {}), kwargs.get("sar", {})
+        results = dict()
+        results["ctc"] = self.ctc_decoder(ctc_logits, **ctc_args)
+        if self.gtc_decoder == "sar":
+            results["sar"] = self.sar_decoder(head_out["sar"], **sar_agrs)
         else:
-            if isinstance(preds, paddle.Tensor):
-                preds = preds.numpy()
-            preds_idx = preds.argmax(axis=2)
-            preds_prob = preds.max(axis=2)
-            text = self.decode(preds_idx, preds_prob, is_remove_duplicate=False)
-            if label is None:
-                return text
-            label = self.decode(label[:, 1:])
-        return text, label
-
-    def add_special_char(self, dict_character):
-        dict_character = ["[BLANK]", "[START]", "[END]"] + dict_character
-        return dict_character
-
-    def decode(self, text_index, text_prob=None, is_remove_duplicate=False):
-        """convert text-index into text-label."""
-        result_list = []
-        batch_size = len(text_index)
-        for batch_idx in range(batch_size):
-            char_list = []
-            conf_list = []
-            for idx in range(len(text_index[batch_idx])):
-                try:
-                    char_idx = self.character[int(text_index[batch_idx][idx])]
-                except:
-                    continue
-                if char_idx == "[END]":  # end
-                    break
-                char_list.append(char_idx)
-                if text_prob is not None:
-                    conf_list.append(text_prob[batch_idx][idx])
-                else:
-                    conf_list.append(1)
-            text = "".join(char_list)
-            result_list.append((text, np.mean(conf_list).tolist()))
-        return result_list
-
+            results["gtc"] = self.gtc_decoder(head_out["gtc"], **gtc_args)
+        return results
+    
 
 class ViTSTRLabelDecode(NRTRLabelDecode):
     """Convert between text-label and text-index"""

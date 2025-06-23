@@ -63,6 +63,7 @@ class MultiHead(nn.Layer):
         self.head_list = kwargs.pop("head_list")
         self.use_pool = kwargs.get("use_pool", False)
         self.use_pos = kwargs.get("use_pos", False)
+        self.return_all_feats = kwargs.get("return_all_feats", False)
         self.in_channels = in_channels
         if self.use_pool:
             self.pool_kernel_size = kwargs.get("pool_kernel_size", [3, 2])
@@ -134,7 +135,7 @@ class MultiHead(nn.Layer):
                     "{} is not supported in MultiHead yet".format(name)
                 )
 
-    def forward(self, x, targets=None):
+    def forward(self, x, targets=None, **kwargs):
         if self.use_pool:
             x = self.pool(
                 x.reshape(
@@ -149,13 +150,17 @@ class MultiHead(nn.Layer):
         head_out = dict()
         head_out["ctc"] = ctc_out
         head_out["ctc_neck"] = ctc_encoder
-        # eval mode
-        if not self.training:
+        if self.return_all_feats or self.training:
+            if self.gtc_head == "sar":
+                sar_out = self.sar_head(x, targets[1:])
+                head_out["sar"] = sar_out
+            else:
+                return_candidates_per_timestep = kwargs.get("return_candidates_per_timestep", False)
+                k = kwargs.get("k", None)
+                gtc_out = self.gtc_head(self.before_gtc(x), targets[1:], return_candidates_per_timestep, k)
+                head_out["gtc"] = gtc_out
+        # eval mode for single ctc decoding
+        if not self.training and not self.return_all_feats:
             return ctc_out
-        if self.gtc_head == "sar":
-            sar_out = self.sar_head(x, targets[1:])
-            head_out["sar"] = sar_out
-        else:
-            gtc_out = self.gtc_head(self.before_gtc(x), targets[1:])
-            head_out["gtc"] = gtc_out
+        # training and other decoding strategies
         return head_out
