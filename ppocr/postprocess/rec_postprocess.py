@@ -438,7 +438,7 @@ class BeamCTCLabelDecode(BaseRecLabelDecode):
                     batch_all_beams = []
                     best_beam = None
 
-                    for seq, prob, rank in batch_beams:
+                    for seq, prob, rank, timestep_info in batch_beams:
                         # Convert indices to text
                         if len(seq) == 0:
                             text = ""
@@ -474,7 +474,7 @@ class BeamCTCLabelDecode(BaseRecLabelDecode):
                             "text": text,
                             "confidence": conf,
                             "rank": rank,
-                            "raw_indices": seq,
+                            "timestep_info": timestep_info
                         }
 
                         if return_word_box:
@@ -508,7 +508,7 @@ class BeamCTCLabelDecode(BaseRecLabelDecode):
                     best_results.append(best_beam)
 
                 # Return both all beams and best results
-                result = {"best_result": best_results, "all_beams": all_beams_results}
+                result = {"best_result": best_results, "candidates": all_beams_results}
 
                 if label is not None:
                     label_decoded = self.decode(label)
@@ -521,7 +521,7 @@ class BeamCTCLabelDecode(BaseRecLabelDecode):
                 preds_idx = []
                 preds_prob = []
 
-                for seq, prob in beam_results:
+                for seq, prob, timestep_info in beam_results:
                     if len(seq) == 0:
                         preds_idx.append([0])
                         preds_prob.append([1.0])

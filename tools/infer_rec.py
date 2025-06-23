@@ -37,6 +37,22 @@ from ppocr.utils.save_load import load_model
 from ppocr.utils.utility import get_image_file_list
 import tools.program as program
 
+def make_json_serializable(data):
+    """
+    Recursively traverses a data structure and converts NumPy numeric types
+    to native Python types to make it JSON serializable.
+    """
+    if isinstance(data, dict):
+        return {key: make_json_serializable(value) for key, value in data.items()}
+    if isinstance(data, list):
+        return [make_json_serializable(element) for element in data]
+    if isinstance(data, np.integer):
+        return int(data)
+    if isinstance(data, np.floating):
+        return float(data)
+    if isinstance(data, np.ndarray):
+        return data.tolist()
+    return data
 
 def main():
     global_config = config["Global"]
@@ -137,7 +153,7 @@ def main():
 
     infer_imgs = config["Global"]["infer_img"]
     infer_list = config["Global"].get("infer_list", None)
-    use_beam_search = global_config.get("use_beam", False)
+    use_beam_search = global_config.get("use_beam_search", False)
     beam_width = global_config.get("beam_width", 5)
     return_all_beams = global_config.get("return_all_beams", False)
     with open(save_res_path, "w") as fout:
@@ -205,7 +221,7 @@ def main():
             info = None
             if isinstance(post_result, dict):
                 if use_beam_search:
-                    rec_info = post_result
+                    rec_info = make_json_serializable(post_result)
                 else:
                     rec_info = dict()
                     for key in post_result:
