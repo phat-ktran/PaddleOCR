@@ -68,22 +68,22 @@ def map_to_json_schema(data):
 
     result = {}
     
-    # Map 'ctc' to list of {'prediction': str, 'conf': float}
+    # Map 'ctc' to list of {'text': str, 'confidence': float}
     if 'ctc' in data:
         result['ctc'] = [
             {
-                'prediction': convert_types(item[0]),
-                'conf': convert_types(item[1])
+                'text': convert_types(item[0]),
+                'confidence': convert_types(item[1])
             }
             for item in data['ctc']
         ]
     
-    # Map 'gtc' to list of {'predictions': str, 'conf': float, 'top_k': list}
+    # Map 'gtc' to list of {'texts': str, 'confidence': float, 'top_k': list}
     if 'gtc' in data:
         result['gtc'] = [
             {
-                'predictions': convert_types(item[0]),
-                'conf': convert_types(item[1]),
+                'text': convert_types(item[0]),
+                'confidence': convert_types(item[1]),
                 'top_k': convert_types(item[2]) if len(item) > 2 else []
             }
             for item in data['gtc']

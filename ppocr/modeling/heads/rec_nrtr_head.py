@@ -157,9 +157,14 @@ class Transformer(nn.Layer):
             if self.beam_size > 0:
                 return self.forward_beam(src)
             else:
-                return self.forward_test(src, return_candidates_per_timestep, k)
+                if targets:
+                    max_len = targets[1].max()
+                    tgt = targets[0][:, : 2 + max_len]
+                else:
+                    tgt = None
+                return self.forward_test(src, tgt, return_candidates_per_timestep, k)
 
-    def forward_test(self, src, return_candidates_per_timestep=False, k=None):
+    def forward_test(self, src, tgt, return_candidates_per_timestep=False, k=None):
         """
         Returns a list containing:
             dec_seq: Tensor of shape [batch_size, seq_len] containing the generated token IDs for each sequence in the batch.
@@ -174,11 +179,40 @@ class Transformer(nn.Layer):
             memory = src  # B N C
         else:
             memory = src
+        
+        # If tgt is provided, use forward_train to get logits and extract top-k candidates
+        if tgt is not None:
+            logits = self.forward_train(src, tgt)  # Shape: [batch_size, seq_len, vocab_size]
+            
+            # Convert logits to probabilities
+            word_probs = F.softmax(logits, axis=-1)  # Shape: [batch_size, seq_len, vocab_size]
+            
+            # Extract top-k candidates for each timestep
+            if return_candidates_per_timestep:
+                # Get top-k indices and probabilities for all timesteps
+                topk_probs, topk_indices = paddle.topk(word_probs, k=k, axis=-1)
+                # topk_indices shape: [batch_size, seq_len, k]
+                # topk_probs shape: [batch_size, seq_len, k]
+                
+                # Get the most probable sequence (greedy decoding)
+                dec_seq = paddle.argmax(word_probs, axis=-1)  # Shape: [batch_size, seq_len]
+                dec_prob = paddle.max(word_probs, axis=-1)    # Shape: [batch_size, seq_len]
+                
+                return [dec_seq, dec_prob, topk_indices, topk_probs]
+            else:
+                # Just return greedy decoding results
+                dec_seq = paddle.argmax(word_probs, axis=-1)  # Shape: [batch_size, seq_len]
+                dec_prob = paddle.max(word_probs, axis=-1)    # Shape: [batch_size, seq_len]
+                
+                return [dec_seq, dec_prob]
+        
+        # Original autoregressive generation when tgt is None
         dec_seq = paddle.full((bs, 1), 2, dtype=paddle.int64)
         dec_prob = paddle.full((bs, 1), 1.0, dtype=paddle.float32)
         if return_candidates_per_timestep:
             candidates_indices_list = []
             candidates_probs_list = []
+            
         for len_dec_seq in range(1, paddle.to_tensor(self.max_len)):
             dec_seq_embed = self.embedding(dec_seq)
             dec_seq_embed = self.positional_encoding(dec_seq_embed)
@@ -189,23 +223,27 @@ class Transformer(nn.Layer):
             dec_output = tgt
             dec_output = dec_output[:, -1, :]
             word_prob = F.softmax(self.tgt_word_prj(dec_output), axis=-1)
+            
             preds_idx = paddle.argmax(word_prob, axis=-1)
             preds_prob = paddle.max(word_prob, axis=-1)
-            if return_candidates_per_timestep:
-                topk_probs, topk_indices = paddle.topk(word_prob, k=k, axis=-1)
-                candidates_indices_list.append(topk_indices)
-                candidates_probs_list.append(topk_probs)
+            
             if paddle.equal_all(
                 preds_idx, paddle.full(preds_idx.shape, 3, dtype="int64")
             ):
                 break
-            preds_prob = paddle.max(word_prob, axis=-1)
+    
+            if return_candidates_per_timestep:
+                topk_probs, topk_indices = paddle.topk(word_prob, k=k, axis=-1)
+                candidates_indices_list.append(topk_indices)
+                candidates_probs_list.append(topk_probs)
+            
             dec_seq = paddle.concat(
                 [dec_seq, paddle.reshape(preds_idx, [-1, 1])], axis=1
             )
             dec_prob = paddle.concat(
                 [dec_prob, paddle.reshape(preds_prob, [-1, 1])], axis=1
             )
+            
         if return_candidates_per_timestep:
             candidates_indices = paddle.transpose(paddle.stack(candidates_indices_list, axis=0), (1,0,2))
             candidates_probs = paddle.transpose(paddle.stack(candidates_probs_list, axis=0), (1,0,2))
