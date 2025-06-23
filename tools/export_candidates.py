@@ -133,7 +133,7 @@ def main():
         else:  # base rec model
             config["Architecture"]["Head"]["out_channels"] = char_num
 
-    config["Architecture"]["return_all_feats"] = True
+    config["Architecture"]["Head"]["return_all_feats"] = True
     model = build_model(config["Architecture"])
 
     load_model(config, model)
