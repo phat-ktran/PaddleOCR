@@ -76,7 +76,11 @@ def load_predictions(pred_file):
                 for item in data:
                     if isinstance(item, dict) and "image" in item:
                         filename = os.path.basename(item["image"])
-                        pred_data[filename] = (item["gtc"][0]["text"], float(item["gtc"][0]["confidence"]))
+                        if "gtc" in item:
+                            info =  (item["gtc"][0]["text"], float(item["gtc"][0]["confidence"]))
+                        else:
+                            info = ("", 1.0)
+                        pred_data[filename] = info 
                     else:
                         print(f"Warning: Invalid item format in JSON predictions: {item}")
         except json.JSONDecodeError as e:
