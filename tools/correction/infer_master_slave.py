@@ -24,7 +24,7 @@ import json
 
 __dir__ = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(__dir__)
-sys.path.insert(0, os.path.abspath(os.path.join(__dir__, "..")))
+sys.path.insert(0, os.path.abspath(os.path.join(__dir__, "../..")))
 
 os.environ["FLAGS_allocator_strategy"] = "auto_growth"
 
@@ -104,7 +104,7 @@ def _construct_model(config, return_all_feats=False):
 def main():
     master_config = config["master"]
     master, master_post_process_class = _construct_model(master_config)
-    master_ops = init_transforms(["image"], master_config["Global"])
+    master_ops = init_transforms(["image"], master_config)
     save_res_path = master_config["Global"].get(
         "save_res_path", "./output/rec/predicts_rec.txt"
     )
@@ -114,7 +114,7 @@ def main():
     
     slave_config = config["slave"]
     slave, slave_post_process_class = _construct_model(slave_config, return_all_feats=True)
-    slave_ops = init_transforms(["image", "label_ctc", "label_gtc", "length"], slave_config["Global"], False)
+    slave_ops = init_transforms(["image", "label_ctc", "label_gtc", "length"], slave_config, False)
     slave.eval()
 
     infer_imgs = master_config["Global"]["infer_img"]
@@ -176,5 +176,5 @@ def main():
 
 
 if __name__ == "__main__":
-    config, device, logger, vdl_writer = program.preprocess()
+    config, device, logger, vdl_writer = program.preprocess_master_slave()
     main()
