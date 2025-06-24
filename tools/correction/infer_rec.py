@@ -24,7 +24,7 @@ import json
 
 __dir__ = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(__dir__)
-sys.path.insert(0, os.path.abspath(os.path.join(__dir__, "..")))
+sys.path.insert(0, os.path.abspath(os.path.join(__dir__, "../..")))
 
 os.environ["FLAGS_allocator_strategy"] = "auto_growth"
 
@@ -34,7 +34,7 @@ from ppocr.data import create_operators, transform
 from ppocr.modeling.architectures import build_model
 from ppocr.postprocess import build_post_process
 from ppocr.utils.save_load import load_model
-from ppocr.utils.utility import get_image_file_list, map_to_json_schema
+from ppocr.utils.utility import convert_types, get_image_file_list
 import tools.program as program
 
 
@@ -201,6 +201,12 @@ def main():
                 kwargs["return_all_beams"] = global_config.get(
                     "return_all_beams", False
                 )
+                kwargs["return_alignment_info"] = global_config.get(
+                    "return_alignment_info", False
+                )
+                kwargs["topk_chars"] = global_config.get(
+                    "topk_chars", 5
+                )
             elif config["PostProcess"]["name"] == "MultiHeadLabelDecode":
                 if "BeamCTCLabelDecode" in config["PostProcess"]["decoder_list"]:
                     kwargs["ctc"] = {
@@ -209,6 +215,12 @@ def main():
                         "return_all_beams": global_config.get(
                             "return_all_beams", False
                         ),
+                        "return_alignment_info": global_config.get(
+                            "return_alignment_info", False
+                        ),
+                        "topk_chars": global_config.get(
+                            "topk_chars", 5
+                        ),
                     }
                 kwargs["gtc"] = {}
             post_result = post_process_class(preds, **kwargs)
@@ -216,10 +228,10 @@ def main():
             info = None
             if isinstance(post_result, dict):
                 if (
-                    kwargs.get("use_beam_search", False)
+                    kwargs.get("return_alignment_info", True)
                     or config["PostProcess"]["name"] == "MultiHeadLabelDecode"
                 ):
-                    rec_info = map_to_json_schema(post_result)
+                    rec_info = convert_types(post_result)
                 else:
                     rec_info = dict()
                     for key in post_result:

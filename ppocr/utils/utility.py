@@ -195,7 +195,23 @@ def check_install(module_name, install_name):
             raise Exception(f"Install {module_name} failed, please install manually")
     else:
         print(f"{module_name} has been installed.")
-        
+      
+def convert_types(item):
+    """Recursively converts NumPy types to Python types."""
+    if isinstance(item, dict):
+        return {key: convert_types(value) for key, value in item.items()}
+    if isinstance(item, list):
+        return [convert_types(element) for element in item]
+    if isinstance(item, tuple):
+        # Handle tuples like (char, prob) in top_k or (text, conf, candidates)
+        return tuple(convert_types(element) for element in item)
+    if isinstance(item, np.integer):
+        return int(item)
+    if isinstance(item, np.floating):
+        return float(item)
+    if isinstance(item, np.ndarray):
+        return item.tolist()
+    return item  
 
 def map_to_json_schema(data):
     """
@@ -208,23 +224,6 @@ def map_to_json_schema(data):
     Returns:
         dict: Data mapped to the schema with 'ctc' and 'gtc' containing lists of dictionaries.
     """
-
-    def convert_types(item):
-        """Recursively converts NumPy types to Python types."""
-        if isinstance(item, dict):
-            return {key: convert_types(value) for key, value in item.items()}
-        if isinstance(item, list):
-            return [convert_types(element) for element in item]
-        if isinstance(item, tuple):
-            # Handle tuples like (char, prob) in top_k or (text, conf, candidates)
-            return tuple(convert_types(element) for element in item)
-        if isinstance(item, np.integer):
-            return int(item)
-        if isinstance(item, np.floating):
-            return float(item)
-        if isinstance(item, np.ndarray):
-            return item.tolist()
-        return item
 
     result = {}
 

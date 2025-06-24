@@ -231,17 +231,46 @@ class BeamCTCLabelDecode(BaseRecLabelDecode):
     def __init__(self, character_dict_path=None, use_space_char=False, **kwargs):
         super(BeamCTCLabelDecode, self).__init__(character_dict_path, use_space_char)
 
-    def beam_search_decode(self, preds, beam_width=5, return_all_beams=False):
+    def get_topk_characters(self, probs, k=5):
         """
-        CTC beam search decoder with detailed timestep tracking
+        Get top-k characters and their probabilities for a given timestep
+
+        Args:
+            probs: probability array for a single timestep [num_classes]
+            k: number of top characters to return
+
+        Returns:
+            List of tuples (char_idx, char_symbol, probability) sorted by probability desc
+        """
+        # Get top-k indices and their probabilities
+        topk_indices = np.argsort(probs)[-k:][::-1]  # Sort descending
+        topk_chars = []
+
+        for idx in topk_indices:
+            prob = probs[idx]
+            if idx == 0:
+                char_symbol = "<blank>"
+            elif idx < len(self.character):
+                char_symbol = self.character[idx]
+            else:
+                char_symbol = f"<unk_{idx}>"
+
+            topk_chars.append((char_symbol, float(prob)))
+
+        return topk_chars
+
+    def beam_search_decode(self, preds, beam_width=5, return_all_beams=False, topk_chars=5):
+        """
+        CTC beam search decoder with detailed timestep tracking and top-k character collection
 
         Args:
             preds: prediction probabilities of shape [batch_size, seq_len, num_classes]
             beam_width: number of beams to keep during search
             return_all_beams: if True, return all beams; if False, return only the best beam
+            topk_chars: number of top characters to collect for each alignment timestep
 
         Returns:
-            If return_all_beams=False: List of tuples (decoded_indices, decoded_probabilities) for each batch
+            If return_all_beams=False: List of tuples (decoded_indices, decoded_probabilities, timestep_info) for each batch
             If return_all_beams=True: List of lists, where each inner list contains all beam candidates
                                      as tuples (decoded_indices, decoded_probabilities, rank, timestep_info)
         """
@@ -252,15 +281,23 @@ class BeamCTCLabelDecode(BaseRecLabelDecode):
 
         for batch_idx in range(batch_size):
             # Initialize beam with empty sequence
-            # Each beam item: (log_prob, sequence, last_char, timestep_probs, alignment)
+            # Each beam item: (log_prob, sequence, last_char, timestep_probs, alignment, topk_per_alignment)
             # timestep_probs: list of probabilities for each character in sequence
             # alignment: list of timestep indices where each character was added
-            beams = [(0.0, [], -1, [], [])]
+            # topk_per_alignment: list of top-k characters for each alignment timestep
+            beams = [(0.0, [], -1, [], [], [])]
+
+            # Collect top-k characters for each timestep for reference
+            timestep_topk_all = []
+            for t in range(seq_len):
+                timestep_probs = preds[batch_idx, t, :]
+                topk_chars_t = self.get_topk_characters(timestep_probs, topk_chars)
+                timestep_topk_all.append(topk_chars_t)
 
             for t in range(seq_len):
-                new_beams = defaultdict(lambda: (float("-inf"), [], []))
+                new_beams = defaultdict(lambda: (float("-inf"), [], [], []))
 
-                for log_prob, seq, last_char, timestep_probs, alignment in beams:
+                for log_prob, seq, last_char, timestep_probs, alignment, topk_per_alignment in beams:
                     for c in range(num_classes):
                         char_prob = preds[batch_idx, t, c]
                         char_log_prob = np.log(char_prob + 1e-8)
@@ -274,6 +311,7 @@ class BeamCTCLabelDecode(BaseRecLabelDecode):
                                     new_log_prob,
                                     timestep_probs.copy(),
                                     alignment.copy(),
+                                    topk_per_alignment.copy(),
                                 )
                         else:
                             # Non-blank token
@@ -283,51 +321,60 @@ class BeamCTCLabelDecode(BaseRecLabelDecode):
                                     new_seq = seq + [c]
                                     new_timestep_probs = timestep_probs + [char_prob]
                                     new_alignment = alignment + [t]
+                                    new_topk_per_alignment = topk_per_alignment + [timestep_topk_all[t]]
                                     key = (tuple(new_seq), c)
                                     if new_log_prob > new_beams[key][0]:
                                         new_beams[key] = (
                                             new_log_prob,
                                             new_timestep_probs,
                                             new_alignment,
+                                            new_topk_per_alignment,
                                         )
                                 else:
                                     # Repeat character, keep original sequence but update last character's probability if better
                                     key = (tuple(seq), c)
                                     updated_probs = timestep_probs.copy()
                                     updated_alignment = alignment.copy()
-                                    # Update the last character's probability if this timestep is more confident
+                                    updated_topk = topk_per_alignment.copy()
+
+                                    # Update the last character's info if this timestep is more confident
                                     if (
                                         len(updated_probs) > 0
                                         and char_prob > updated_probs[-1]
                                     ):
                                         updated_probs[-1] = char_prob
                                         updated_alignment[-1] = t
+                                        updated_topk[-1] = timestep_topk_all[t]
+
                                     if new_log_prob > new_beams[key][0]:
                                         new_beams[key] = (
                                             new_log_prob,
                                             updated_probs,
                                             updated_alignment,
+                                            updated_topk,
                                         )
                             else:
                                 # Different character - add to sequence
                                 new_seq = seq + [c]
                                 new_timestep_probs = timestep_probs + [char_prob]
                                 new_alignment = alignment + [t]
+                                new_topk_per_alignment = topk_per_alignment + [timestep_topk_all[t]]
                                 key = (tuple(new_seq), c)
                                 if new_log_prob > new_beams[key][0]:
                                     new_beams[key] = (
                                         new_log_prob,
                                         new_timestep_probs,
                                         new_alignment,
+                                        new_topk_per_alignment,
                                     )
 
                 # Keep top beam_width beams
                 beams = []
-                for (seq, last_char), (log_prob, timestep_probs, alignment) in sorted(
+                for (seq, last_char), (log_prob, timestep_probs, alignment, topk_per_alignment) in sorted(
                     new_beams.items(), key=lambda x: x[1][0], reverse=True
                 )[:beam_width]:
                     beams.append(
-                        (log_prob, list(seq), last_char, timestep_probs, alignment)
+                        (log_prob, list(seq), last_char, timestep_probs, alignment, topk_per_alignment)
                     )
 
             # Process results based on return_all_beams flag
@@ -343,11 +390,12 @@ class BeamCTCLabelDecode(BaseRecLabelDecode):
                         _,
                         timestep_probs,
                         alignment,
+                        topk_per_alignment,
                     ) in enumerate(sorted_beams):
                         prob = np.exp(log_prob)
                         timestep_info = {
-                            "char_probs": timestep_probs,
                             "alignment": alignment,
+                            "topk_per_alignment": topk_per_alignment,
                             "avg_char_conf": np.mean(timestep_probs)
                             if timestep_probs
                             else 0.0,
@@ -357,40 +405,118 @@ class BeamCTCLabelDecode(BaseRecLabelDecode):
                             "max_char_conf": np.max(timestep_probs)
                             if timestep_probs
                             else 0.0,
+                            "timestep_topk_all": timestep_topk_all,  # All timesteps top-k for reference
                         }
                         beam_candidates.append((seq, prob, rank + 1, timestep_info))
                 else:
                     timestep_info = {
-                        "char_probs": [],
                         "alignment": [],
+                        "topk_per_alignment": [],
                         "avg_char_conf": 0.0,
                         "min_char_conf": 0.0,
                         "max_char_conf": 0.0,
+                        "timestep_topk_all": timestep_topk_all,
                     }
                     beam_candidates.append(([], 0.0, 1, timestep_info))
                 results.append(beam_candidates)
             else:
                 # Return only the best beam (original behavior)
                 if beams:
-                    best_log_prob, best_seq, _, best_timestep_probs, best_alignment = (
+                    best_log_prob, best_seq, _, best_timestep_probs, best_alignment, best_topk_per_alignment = (
                         max(beams, key=lambda x: x[0])
                     )
                     best_prob = np.exp(best_log_prob)
                     timestep_info = {
-                        "char_probs": best_timestep_probs,
                         "alignment": best_alignment,
+                        "topk_per_alignment": best_topk_per_alignment,
                         "avg_char_conf": np.mean(best_timestep_probs)
                         if best_timestep_probs
                         else 0.0,
+                        "timestep_topk_all": timestep_topk_all,
                     }
                     results.append((best_seq, best_prob, timestep_info))
                 else:
                     timestep_info = {
-                        "char_probs": [],
                         "alignment": [],
+                        "topk_per_alignment": [],
                         "avg_char_conf": 0.0,
+                        "timestep_topk_all": timestep_topk_all,
                     }
                     results.append(([], 0.0, timestep_info))
+
+        return results
+
+    def greedy_decode_with_alignment(self, preds, topk_chars=5):
+        """
+        Greedy decoding with alignment and top-k character tracking
+
+        Args:
+            preds: prediction probabilities of shape [batch_size, seq_len, num_classes]
+            topk_chars: number of top characters to collect for each alignment timestep
+
+        Returns:
+            List of tuples (decoded_indices, decoded_probabilities, timestep_info) for each batch
+        """
+        batch_size, seq_len, num_classes = preds.shape
+        blank_id = 0
+
+        results = []
+
+        for batch_idx in range(batch_size):
+            # Greedy decoding
+            pred_indices = preds[batch_idx].argmax(axis=1)  # [seq_len]
+            pred_probs = preds[batch_idx].max(axis=1)  # [seq_len]
+
+            # Track alignment and collect top-k
+            alignment_timesteps = []
+            alignment_char_probs = []
+            topk_per_alignment = []
+            decoded_sequence = []
+
+            # Collect top-k for all timesteps
+            timestep_topk_all = []
+            for t in range(seq_len):
+                timestep_probs = preds[batch_idx, t, :]
+                topk_chars_t = self.get_topk_characters(timestep_probs, topk_chars)
+                timestep_topk_all.append(topk_chars_t)
+
+            # Process sequence to find alignments (similar to CTC collapse)
+            prev_char = -1  # Previous non-blank character
+
+            for t in range(seq_len):
+                current_char = pred_indices[t]
+                current_prob = pred_probs[t]
+
+                if current_char != blank_id:  # Non-blank
+                    if current_char != prev_char:  # New character (not a repeat)
+                        # This timestep represents a new character alignment
+                        decoded_sequence.append(current_char)
+                        alignment_timesteps.append(t)
+                        alignment_char_probs.append(current_prob)
+                        topk_per_alignment.append(timestep_topk_all[t])
+
+                    prev_char = current_char
+                else:
+                    # Blank token resets the previous character
+                    prev_char = -1
+
+            # Create timestep info
+            timestep_info = {
+                "alignment": alignment_timesteps,
+                "topk_per_alignment": topk_per_alignment,
+                "avg_char_conf": np.mean(alignment_char_probs) if alignment_char_probs else 0.0,
+                "min_char_conf": np.min(alignment_char_probs) if alignment_char_probs else 0.0,
+                "max_char_conf": np.max(alignment_char_probs) if alignment_char_probs else 0.0,
+                "timestep_topk_all": timestep_topk_all,
+            }
+
+            # Calculate overall probability (geometric mean)
+            if len(alignment_char_probs) > 0:
+                overall_prob = np.prod(alignment_char_probs) ** (1.0 / len(alignment_char_probs))
+            else:
+                overall_prob = 1.0
+
+            results.append((decoded_sequence, overall_prob, timestep_info))
 
         return results
 
@@ -402,6 +528,8 @@ class BeamCTCLabelDecode(BaseRecLabelDecode):
         use_beam_search=False,
         beam_width=5,
         return_all_beams=False,
+        topk_chars=5,
+        return_alignment_info=False,
         *args,
         **kwargs,
     ):
@@ -415,10 +543,13 @@ class BeamCTCLabelDecode(BaseRecLabelDecode):
             use_beam_search: whether to use beam search instead of greedy decoding
             beam_width: beam width for beam search (only used if use_beam_search=True)
             return_all_beams: if True and use_beam_search=True, return all beam candidates
+            topk_chars: number of top characters to collect for each alignment timestep
+            return_alignment_info: if True, return alignment and top-k info even for greedy decoding
 
         Returns:
-            If return_all_beams=False: Standard format (text, confidence) tuples
+            If return_all_beams=False: Standard format (text, confidence) tuples, or with alignment info
             If return_all_beams=True: Dictionary with 'best_result' and 'all_beams' keys
+            If return_alignment_info=True: Dictionary with alignment and top-k information
         """
         if isinstance(preds, tuple) or isinstance(preds, list):
             preds = preds[-1]
@@ -427,7 +558,7 @@ class BeamCTCLabelDecode(BaseRecLabelDecode):
 
         if use_beam_search:
             # Use beam search decoding
-            beam_results = self.beam_search_decode(preds, beam_width, return_all_beams)
+            beam_results = self.beam_search_decode(preds, beam_width, return_all_beams, topk_chars)
 
             if return_all_beams:
                 # Process all beams for each batch
@@ -540,11 +671,53 @@ class BeamCTCLabelDecode(BaseRecLabelDecode):
                 preds_idx = np.array(preds_idx)
                 preds_prob = np.array(preds_prob)
         else:
-            # Use greedy decoding (original behavior)
-            preds_idx = preds.argmax(axis=2)
-            preds_prob = preds.max(axis=2)
+            # Use greedy decoding
+            if return_alignment_info:
+                # Use enhanced greedy decoding with alignment tracking
+                greedy_results = self.greedy_decode_with_alignment(preds, topk_chars)
 
-        # Standard decoding path
+                # Process results for return
+                processed_results = []
+                for seq, prob, timestep_info in greedy_results:
+                    # Convert indices to text
+                    if len(seq) == 0:
+                        text = ""
+                        conf = prob
+                    else:
+                        char_list = [
+                            self.character[idx]
+                            for idx in seq
+                            if idx < len(self.character)
+                        ]
+                        text = "".join(char_list)
+
+                        if self.reverse:  # for arabic rec
+                            text = self.pred_reverse(text)
+
+                        conf = prob
+
+                    result_item = {
+                        "text": text,
+                        "confidence": conf,
+                        "info": timestep_info
+                    }
+
+                    processed_results.append(result_item)
+
+                # Return with alignment info
+                result = {"results": processed_results}
+
+                if label is not None:
+                    label_decoded = self.decode(label)
+                    result["label"] = label_decoded
+
+                return result
+            else:
+                # Original greedy decoding
+                preds_idx = preds.argmax(axis=2)
+                preds_prob = preds.max(axis=2)
+
+        # Standard decoding path (original behavior)
         text = self.decode(
             preds_idx,
             preds_prob,
@@ -1398,7 +1571,7 @@ class MultiHeadLabelDecode(object):
                 raise ValueError(f"{name} is not supported in MultiHeadLabelDecode")
         if hasattr(self, "ctc_decoder"):
             self.character = getattr(self.ctc_decoder, "character")
-    
+
     def __call__(self, head_out, **kwargs):
         # Currently, MultiHeadLabelDecode only supports test-time decoding
         ctc_logits = head_out["ctc"]
@@ -1410,7 +1583,7 @@ class MultiHeadLabelDecode(object):
         else:
             results["gtc"] = self.gtc_decoder(head_out["gtc"], **gtc_args)
         return results
-    
+
 
 class ViTSTRLabelDecode(NRTRLabelDecode):
     """Convert between text-label and text-index"""
