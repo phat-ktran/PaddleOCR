@@ -38,25 +38,25 @@ from ppocr.utils.utility import get_image_file_list, map_to_json_schema
 import tools.program as program
 
 
-def prepare_args(global_config):
+def prepare_args(config):
     kwargs = dict()
     if config["PostProcess"]["name"] == "BeamCTCLabelDecode":
-        kwargs["use_beam_search"] = global_config.get("use_beam_search", False)
-        kwargs["beam_width"] = global_config.get("beam_width", 5)
-        kwargs["return_all_beams"] = global_config.get("return_all_beams", False)
+        kwargs["use_beam_search"] = config["Global"].get("use_beam_search", False)
+        kwargs["beam_width"] = config["Global"].get("beam_width", 5)
+        kwargs["return_all_beams"] = config["Global"].get("return_all_beams", False)
     elif config["PostProcess"]["name"] == "MultiHeadLabelDecode":
         if "BeamCTCLabelDecode" in config["PostProcess"]["decoder_list"]:
             kwargs["ctc"] = {
-                "use_beam_search": global_config.get("use_beam_search", False),
-                "beam_width": global_config.get("beam_width", False),
-                "return_all_beams": global_config.get("return_all_beams", False),
+                "use_beam_search": config["Global"].get("use_beam_search", False),
+                "beam_width": config["Global"].get("beam_width", False),
+                "return_all_beams": config["Global"].get("return_all_beams", False),
             }
         kwargs["gtc"] = {}
 
     return kwargs
 
 
-def init_transforms(keys, global_config, ignore_encode=True):
+def init_transforms(keys, config, ignore_encode=True):
     transforms = []
     for op in config["Eval"]["dataset"]["transforms"]:
         op_name = list(op)[0]
@@ -67,8 +67,8 @@ def init_transforms(keys, global_config, ignore_encode=True):
         elif op_name == "KeepKeys":
             op[op_name]["keep_keys"] = keys
         transforms.append(op)
-    global_config["infer_mode"] = True
-    ops = create_operators(transforms, global_config)
+    config["Global"]["infer_mode"] = True
+    ops = create_operators(transforms, config["Global"])
     return ops
 
 
@@ -129,7 +129,7 @@ def main():
             images = np.expand_dims(batch[0], axis=0)
             images = paddle.to_tensor(images)
 
-            kwargs = prepare_args(master_config["Global"])
+            kwargs = prepare_args(master_config)
             preds = master.forward(images)
             post_result = master_post_process_class(preds, **kwargs)
             if len(post_result[0]) >= 2:
@@ -163,8 +163,9 @@ def main():
     
                 batch = (images, label_ctc, label_gtc, length)
                 preds = slave.forward(images, batch[1:])
+                kwargs = prepare_args(slave_config)
                 slave_post_result = slave_post_process_class(preds, **kwargs)
-                slave_post_result = map_to_json_schema(post_result)
+                slave_post_result = map_to_json_schema(slave_post_result)
                 post_result["gtc"] = slave_post_result["gtc"]
                 
             info = json.dumps(post_result, ensure_ascii=False)
