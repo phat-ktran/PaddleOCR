@@ -39,7 +39,7 @@ class CTCHead(nn.Layer):
         out_channels,
         fc_decay=0.0004,
         mid_channels=None,
-        return_feats=False,
+        return_all_feats=False,
         **kwargs,
     ):
         super(CTCHead, self).__init__()
@@ -72,7 +72,7 @@ class CTCHead(nn.Layer):
             )
         self.out_channels = out_channels
         self.mid_channels = mid_channels
-        self.return_feats = return_feats
+        self.return_all_feats = return_all_feats
         self.export_center = kwargs.get("export_center", False)
 
     def forward(self, x, targets=None):
@@ -82,7 +82,7 @@ class CTCHead(nn.Layer):
             x = self.fc1(x)
             predicts = self.fc2(x)
 
-        if self.return_feats or self.export_center:
+        if self.return_all_feats or self.export_center:
             result = (x, predicts)
         else:
             result = predicts
