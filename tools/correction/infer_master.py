@@ -34,60 +34,8 @@ from ppocr.data import create_operators, transform
 from ppocr.modeling.architectures import build_model
 from ppocr.postprocess import build_post_process
 from ppocr.utils.save_load import load_model
-from ppocr.utils.utility import get_image_file_list
+from ppocr.utils.utility import get_image_file_list, map_to_json_schema
 import tools.program as program
-
-
-def map_to_json_schema(data):
-    """
-    Maps input data to the specified JSON schema, converting NumPy types to Python types
-    for JSON serializability and renaming fields for clarity.
-
-    Args:
-        data (dict): Input data with 'ctc' and 'gtc' keys, as produced by NRTRLabelDecode.
-
-    Returns:
-        dict: Data mapped to the schema with 'ctc' and 'gtc' containing lists of dictionaries.
-    """
-
-    def convert_types(item):
-        """Recursively converts NumPy types to Python types."""
-        if isinstance(item, dict):
-            return {key: convert_types(value) for key, value in item.items()}
-        if isinstance(item, list):
-            return [convert_types(element) for element in item]
-        if isinstance(item, tuple):
-            # Handle tuples like (char, prob) in top_k or (text, conf, candidates)
-            return tuple(convert_types(element) for element in item)
-        if isinstance(item, np.integer):
-            return int(item)
-        if isinstance(item, np.floating):
-            return float(item)
-        if isinstance(item, np.ndarray):
-            return item.tolist()
-        return item
-
-    result = {}
-
-    # Map 'ctc' to list of {'text': str, 'confidence': float}
-    if "ctc" in data:
-        result["ctc"] = [
-            {"text": convert_types(item[0]), "confidence": convert_types(item[1])}
-            for item in data["ctc"]
-        ]
-
-    # Map 'gtc' to list of {'texts': str, 'confidence': float, 'top_k': list}
-    if "gtc" in data:
-        result["gtc"] = [
-            {
-                "text": convert_types(item[0]),
-                "confidence": convert_types(item[1]),
-                "top_k": convert_types(item[2]) if len(item) > 2 else [],
-            }
-            for item in data["gtc"]
-        ]
-
-    return result
 
 
 def prepare_args(global_config):

@@ -44,27 +44,59 @@ def load_ground_truth(gt_file):
 
 def load_predictions(pred_file):
     """Load predictions from file."""
-    pred_data = {}
-    try:
-        with open(pred_file, "r", encoding="utf-8") as f:
-            for line in f:
-                line = line.strip()
-                if not line:
-                    continue
-                parts = line.split("\t")
-                if len(parts) >= 3:
-                    image_path = parts[0]
-                    text = parts[1]
-                    confidence = float(parts[2])
-                    # Extract just the filename for matching
-                    filename = os.path.basename(image_path)
-                    pred_data[filename] = (text, confidence)
-                else:
-                    print(f"Warning: Invalid line format in predictions: {line}")
-    except Exception as e:
-        print(f"Error loading predictions file: {e}")
+    def _load_from_txt(pred_file):
+        pred_data = {}
+        try:
+            with open(pred_file, "r", encoding="utf-8") as f:
+                for line in f:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    parts = line.split("\t")
+                    if len(parts) >= 3:
+                        image_path = parts[0]
+                        text = parts[1]
+                        confidence = float(parts[2])
+                        # Extract just the filename for matching
+                        filename = os.path.basename(image_path)
+                        pred_data[filename] = (text, confidence)
+                    else:
+                        print(f"Warning: Invalid line format in predictions: {line}")
+        except Exception as e:
+            print(f"Error loading predictions file: {e}")
+            sys.exit(1)
+        return pred_data
+        
+    def _load_from_json_impl(pred_file):
+        """Load predictions from a JSON file."""
+        pred_data = {}
+        try:
+            with open(pred_file, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                for item in data:
+                    if isinstance(item, dict) and "image" in item:
+                        filename = os.path.basename(item["image"])
+                        pred_data[filename] = (item["gtc"][0]["text"], float(item["gtc"][0]["confidence"]))
+                    else:
+                        print(f"Warning: Invalid item format in JSON predictions: {item}")
+        except json.JSONDecodeError as e:
+            print(f"Error parsing JSON predictions file: {e}")
+            sys.exit(1)
+        except Exception as e:
+            print(f"Error loading predictions file: {e}")
+            sys.exit(1)
+        return pred_data
+
+    # Determine file type based on extension and call the appropriate loader
+    file_ext = os.path.splitext(pred_file)[1].lower()
+
+    if file_ext == ".txt":
+        return _load_from_txt(pred_file)
+    elif file_ext == ".json":
+        return _load_from_json_impl(pred_file)
+    else:
+        print(f"Error: Unsupported prediction file format '{file_ext}'. Only .txt and .json are supported.")
         sys.exit(1)
-    return pred_data
 
 
 def match_data(gt_data, pred_data):

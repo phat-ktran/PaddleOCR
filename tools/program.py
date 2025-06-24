@@ -68,6 +68,41 @@ class ArgsParser(ArgumentParser):
             k, v = s.split("=")
             config[k] = yaml.load(v, Loader=yaml.Loader)
         return config
+ 
+        
+class MasterSlaveArgsParser(ArgumentParser):
+    def __init__(self):
+        super(MasterSlaveArgsParser, self).__init__(formatter_class=RawDescriptionHelpFormatter)
+        self.add_argument("-mc", "--master-config", help="master configuration file to use")
+        self.add_argument("-mo", "--master-opt", nargs="+", help="set master configuration options")
+        self.add_argument("-sc", "--slave-config", help="slave configuration file to use")
+        self.add_argument("-so", "--slave-opt", nargs="+", help="set slave configuration options")
+        self.add_argument(
+            "-p",
+            "--profiler_options",
+            type=str,
+            default=None,
+            help="The option of profiler, which should be in format "
+            '"key1=value1;key2=value2;key3=value3".',
+        )
+
+    def parse_args(self, argv=None):
+        args = super(MasterSlaveArgsParser, self).parse_args(argv)
+        assert args.master_config is not None, "Please specify --master-config=configure_file_path."
+        assert args.slave_config is not None, "Please specify --slave-config=configure_file_path."
+        args.master_opt = self._parse_opt(args.master_opt)
+        args.slave_opt = self._parse_opt(args.slave_opt)
+        return args
+
+    def _parse_opt(self, opts):
+        config = {}
+        if not opts:
+            return config
+        for s in opts:
+            s = s.strip()
+            k, v = s.split("=")
+            config[k] = yaml.load(v, Loader=yaml.Loader)
+        return config
 
 
 def load_config(file_path):
@@ -917,13 +952,17 @@ def get_center(
     return char_center
 
 
+def _construct_config(config, opt, profiler_options):
+    config = load_config(config)
+    config = merge_config(config, opt)
+    profile_dic = {"profiler_options": profiler_options}
+    config = merge_config(config, profile_dic)
+    return config
+
+
 def preprocess(is_train=False):
     FLAGS = ArgsParser().parse_args()
-    config = load_config(FLAGS.config)
-    config = merge_config(config, FLAGS.opt)
-    profile_dic = {"profiler_options": FLAGS.profiler_options}
-    config = merge_config(config, profile_dic)
-
+    config = _construct_config(FLAGS.config, FLAGS.opt, FLAGS.profiler_options)
     if is_train:
         # save_config
         save_model_dir = config["Global"]["save_model_dir"]
@@ -979,11 +1018,6 @@ def preprocess(is_train=False):
         "Gestalt",
         "SLANet",
         "RobustScanner",
-        # PP-Thesis
-        "NomNaCTC",
-        "NomNaDecoder",
-        "NomNaAttention",
-        # =============
         "CT",
         "RFL",
         "DRRG",
@@ -1049,3 +1083,110 @@ def preprocess(is_train=False):
 
     logger.info("train with paddle {} and device {}".format(paddle.__version__, device))
     return config, device, logger, log_writer
+
+
+def preprocess_master_slave(is_train=False):
+    FLAGS = MasterSlaveArgsParser().parse_args()
+    master_config = _construct_config(FLAGS.master_config, FLAGS.master_opt, FLAGS.profiler_options)
+    slave_config = _construct_config(FLAGS.slave_config, FLAGS.slave_opt, FLAGS.profiler_options)
+    
+    supported_algos = [
+        "CRNN",
+        "STARNet",
+        "RARE",
+        "SRN",
+        "PGNet",
+        "Distillation",
+        "NRTR",
+        "SAR",
+        "PSE",
+        "SEED",
+        "SDMGR",
+        "PREN",
+        "FCE",
+        "SVTR",
+        "SVTR_LCNet",
+        "ViTSTR",
+        "ABINet",
+        "VisionLAN",
+        "SLANet",
+        "RobustScanner",
+        "SVTR_HGNet",
+        "CPPD",
+    ]
+    
+    if is_train:
+        # save_config
+        save_model_dir = master_config["Global"]["save_model_dir"]
+        os.makedirs(save_model_dir, exist_ok=True)
+        with open(os.path.join(save_model_dir, "master_config.yml"), "w") as f:
+            yaml.dump(dict(master_config), f, default_flow_style=False, sort_keys=False)
+        with open(os.path.join(save_model_dir, "slave_config.yml"), "w") as f:
+            yaml.dump(dict(slave_config), f, default_flow_style=False, sort_keys=False)
+        log_file = "{}/train.log".format(save_model_dir)
+    else:
+        log_file = None
+
+    log_ranks = master_config["Global"].get("log_ranks", "0")
+    logger = get_logger(log_file=log_file, log_ranks=log_ranks)
+
+    # check if set use_gpu=True in paddlepaddle cpu version
+    use_gpu = master_config["Global"].get("use_gpu", False)
+    use_xpu = master_config["Global"].get("use_xpu", False)
+    use_npu = master_config["Global"].get("use_npu", False)
+    use_mlu = master_config["Global"].get("use_mlu", False)
+    use_gcu = master_config["Global"].get("use_gcu", False)
+
+    master_alg = master_config["Architecture"]["algorithm"]
+    slave_alg = slave_config["Architecture"]["algorithm"]
+    assert master_alg in supported_algos and slave_alg in supported_algos
+
+    if use_xpu:
+        device = "xpu:{0}".format(os.getenv("FLAGS_selected_xpus", 0))
+    elif use_npu:
+        device = "npu:{0}".format(os.getenv("FLAGS_selected_npus", 0))
+    elif use_mlu:
+        device = "mlu:{0}".format(os.getenv("FLAGS_selected_mlus", 0))
+    elif use_gcu:  # Use Enflame GCU(General Compute Unit)
+        device = "gcu:{0}".format(os.getenv("FLAGS_selected_gcus", 0))
+    else:
+        device = "gpu:{}".format(dist.ParallelEnv().dev_id) if use_gpu else "cpu"
+    check_device(use_gpu, use_xpu, use_npu, use_mlu, use_gcu)
+
+    device = paddle.set_device(device)
+    master_config["Global"]["distributed"] = dist.get_world_size() != 1
+
+    loggers = []
+
+    if "use_visualdl" in master_config["Global"] and master_config["Global"]["use_visualdl"]:
+        logger.warning(
+            "You are using VisualDL, the VisualDL is deprecated and removed in ppocr!"
+        )
+        log_writer = None
+    if (
+        "use_wandb" in master_config["Global"] and master_config["Global"]["use_wandb"]
+    ) or "wandb" in master_config:
+        save_dir = master_config["Global"]["save_model_dir"]
+        "{}/wandb".format(save_dir)
+        if "wandb" in master_config:
+            wandb_params = master_config["wandb"]
+        else:
+            wandb_params = dict()
+        wandb_params.update({"save_dir": save_dir})
+        log_writer = WandbLogger(**wandb_params, config=master_config)
+        loggers.append(log_writer)
+    else:
+        log_writer = None
+    
+    logger.info("Master configuration")
+    print_dict(master_config, logger)
+    logger.info("Slave configuration")
+    print_dict(slave_config, logger)
+
+    if loggers:
+        log_writer = Loggers(loggers)
+    else:
+        log_writer = None
+
+    logger.info("train with paddle {} and device {}".format(paddle.__version__, device))
+    return { "master": master_config, "slave": slave_config }, device, logger, log_writer
