@@ -501,3 +501,39 @@ class TwoStepCosine(object):
                 last_epoch=self.last_epoch,
             )
         return learning_rate
+
+
+class ExponentialDecay(object):
+    """
+    Exponential learning rate decay
+    lr = initial_lr * gamma^step
+    Args:
+        learning_rate(float): initial learning rate
+        step_each_epoch(int): steps each epoch
+        epochs(int): total training epochs
+        gamma(float): The decay factor. Default: 0.99997 (equivalent to 10^(-1/90000))
+        last_epoch (int, optional): The index of last epoch. Can be set to restart training. Default: -1, means initial learning rate.
+    """
+
+    def __init__(
+        self,
+        learning_rate,
+        step_each_epoch,
+        epochs,
+        gamma=0.99997,
+        last_epoch=-1,
+        **kwargs,
+    ):
+        super(ExponentialDecay, self).__init__()
+        self.learning_rate = learning_rate
+        self.gamma = gamma
+        self.last_epoch = last_epoch
+        self.decay_steps = step_each_epoch * epochs
+
+    def __call__(self):
+        learning_rate = lr.ExponentialDecay(
+            learning_rate=self.learning_rate,
+            gamma=self.gamma,
+            last_epoch=self.last_epoch,
+        )
+        return learning_rate

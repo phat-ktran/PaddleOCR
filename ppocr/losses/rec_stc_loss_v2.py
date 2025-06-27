@@ -303,13 +303,29 @@ class STC(nn.Layer):
         # Match PyTorch grad_enabled context handling
         with paddle.set_grad_enabled(not a.stop_gradient):
             B, T, C = b.shape
-            # Expand a to match b's dimensions - match PyTorch tile behavior
+            # Expand a to match b's dimensions
             a_expanded = paddle.tile(a, [1, 1, C])
 
-            # Compute log(exp(a) - exp(b)) = a + log(1 - exp(b - a))
-            # Match PyTorch: a + torch.log1p(1e-7 - torch.exp(b - a))
+            # Ensure a >= b for mathematical validity
+            # If a < b, then exp(a) - exp(b) < 0, which is invalid for log
             diff = b - a_expanded
-            result = a_expanded + paddle.log1p(1e-7 - paddle.exp(diff))
+            
+            # Clamp diff to ensure numerical stability:
+            # - max=0 ensures exp(diff) <= 1, so 1-exp(diff) >= 0
+            # - min=-20 prevents exp(diff) from becoming too small (exp(-20) ≈ 2e-9)
+            diff = paddle.clip(diff, min=-20.0, max=0.0)
+
+            # Compute log(1 - exp(diff)) more stably
+            # When diff is very negative, exp(diff) ≈ 0, so log(1-exp(diff)) ≈ log(1) = 0
+            # When diff is close to 0, we need log1p for precision
+            exp_diff = paddle.exp(diff)
+            log_term = paddle.log1p(-exp_diff)
+
+            # Add small epsilon to prevent -inf values
+            epsilon = 1e-8
+            result = a_expanded + paddle.maximum(
+                log_term, paddle.log(paddle.to_tensor(epsilon))
+            )
 
             return result
 
