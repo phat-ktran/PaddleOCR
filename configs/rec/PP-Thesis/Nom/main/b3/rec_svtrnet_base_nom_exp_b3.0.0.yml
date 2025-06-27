@@ -107,14 +107,15 @@ Architecture:
 
 Loss:
   name: STCLoss
-  use_focal_loss: false
   p0: 0.9
   plast: 0.5
   thalf: 10000.0
+  reduction: "mean"
 
 PostProcess:
   name: CTCLabelDecode
-
+  is_remove_duplicate: false
+  
 Metric:
   name: RecMetric
   main_indicator: acc
