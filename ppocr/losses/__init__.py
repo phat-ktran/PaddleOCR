@@ -84,7 +84,6 @@ def build_loss(config):
         "SASTLoss",
         "FCELoss",
         "CTCLoss",
-        "STCLoss",
         "ClsLoss",
         "AttentionLoss",
         "SRNLoss",
@@ -126,8 +125,5 @@ def build_loss(config):
     assert module_name in support_dict, Exception(
         "loss only support {}".format(support_dict)
     )
-    if module_name == "STCLoss":
-        from .rec_stc_loss import STCLoss
-        pass
     module_class = eval(module_name)(**config)
     return module_class
