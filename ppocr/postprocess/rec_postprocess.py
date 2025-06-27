@@ -198,6 +198,7 @@ class CTCLabelDecode(BaseRecLabelDecode):
 
     def __init__(self, character_dict_path=None, use_space_char=False, **kwargs):
         super(CTCLabelDecode, self).__init__(character_dict_path, use_space_char)
+        self.is_remove_duplicate = kwargs.get("is_remove_duplicate", True)
 
     def __call__(self, preds, label=None, return_word_box=False, *args, **kwargs):
         if isinstance(preds, tuple) or isinstance(preds, list):
@@ -209,7 +210,7 @@ class CTCLabelDecode(BaseRecLabelDecode):
         text = self.decode(
             preds_idx,
             preds_prob,
-            is_remove_duplicate=True,
+            is_remove_duplicate=self.is_remove_duplicate,
             return_word_box=return_word_box,
         )
         if return_word_box:
