@@ -215,7 +215,14 @@ def main(config, device, logger, vdl_writer, seed):
     pre_best_model_dict = load_model(
         config, model, optimizer, config["Architecture"]["model_type"]
     )
-
+    
+    # freeze params
+    freeze_params_func = config["Architecture"].pop("freeze_params_func", None)
+    if freeze_params_func:
+        from ppocr.utils.freeze_params import freeze_svtrnet_backbone
+        eval(freeze_params_func)(model, logger)
+        logger.info("Freeze model params completed")
+        
     if config["Global"]["distributed"]:
         find_unused_parameters = config["Global"].get("find_unused_parameters", False)
         model = paddle.DataParallel(
