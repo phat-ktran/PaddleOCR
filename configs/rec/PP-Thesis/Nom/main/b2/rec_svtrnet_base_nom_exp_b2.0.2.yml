@@ -5,10 +5,10 @@ Global:
   epoch_num: 40
   distributed: true
   log_smooth_window: 20
-  print_batch_step: 100
+  print_batch_step: 10
   save_model_dir: ./output/rec_svtrnet_base_nom_exp_b2.0.2/
-  save_epoch_step: 10
-  eval_batch_step: [5950, 1190]
+  save_epoch_step: 1
+  eval_batch_step: [8168, 1021]
   cal_metric_during_train: true
 
   pretrained_model: ./output/rec_svtrnet_base_ch_exp_a5.1.0/best_accuracy
@@ -150,7 +150,7 @@ Train:
             - length
   loader:
     shuffle: true
-    batch_size_per_card: 24
+    batch_size_per_card: 30
     drop_last: true
     num_workers: 16
 
