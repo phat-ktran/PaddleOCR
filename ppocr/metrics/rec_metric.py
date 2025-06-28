@@ -38,8 +38,7 @@ class RecMetric(object):
             filter(lambda x: x in (string.digits + string.ascii_letters), text)
         )
         return text.lower()
-        
-        
+
     def _correct_rate(self, pred: str, target: str) -> float:
         """
         Correct rate CR = (N_t - D_e - S_e) / N_t,
@@ -50,20 +49,20 @@ class RecMetric(object):
         Insertions (extra chars in pred) are NOT counted toward errors.
         """
         Nt = len(target)
-    
+
         # Edge‐case: empty ground‐truth
         if Nt == 0:
             # define CR = 1.0 if both are empty (no errors), else 0.0
             return 1.0 if len(pred) == 0 else 0.0
-    
+
         # Edge‐case: empty prediction against non‐empty target → zero correctness
         if len(pred) == 0:
             return 0.0
-    
+
         # Weights: (ins_cost, del_cost, sub_cost)
-        # By swapping target and pred, missing chars in pred become deletions.
-        ds_es = Levenshtein.distance(target, pred, weights=(0, 1, 1))
-    
+        # Calculate distance from pred to target to correctly count deletions and substitutions.
+        ds_es = Levenshtein.distance(pred, target, weights=(0, 1, 1))
+
         return (Nt - ds_es) / Nt
 
     def _accurate_rate(self, pred: str, target: str) -> float:
@@ -77,8 +76,8 @@ class RecMetric(object):
             # if both empty, perfect; if prediction non-empty,
             # there are pure insertions → AR → −∞ in principle,
             # but here we choose to return a large negative number
-            return 1.0 if len(pred) == 0 else float('-inf')
-    
+            return 1.0 if len(pred) == 0 else float("-inf")
+
         total_errors = Levenshtein.distance(pred, target, weights=(1, 1, 1))
         return (Nt - total_errors) / Nt
 
