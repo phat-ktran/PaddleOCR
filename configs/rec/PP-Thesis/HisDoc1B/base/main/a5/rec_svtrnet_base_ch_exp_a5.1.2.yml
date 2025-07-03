@@ -25,7 +25,7 @@ Global:
   d2s_train_image_shape: [3, 32, 640]
   
 wandb:
-  project: "HisDoc1B-5M"
+  project: "HisDoc1B-5M-Cleaner"
   entity: "trankim147-vnu-hcmus"
   name: "A5.1.2"
 
