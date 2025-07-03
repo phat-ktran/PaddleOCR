@@ -19,10 +19,10 @@ Global:
   save_res_path: null
   infer_mode: false
   use_space_char: false
-  max_text_length: &max_text_length 44
+  max_text_length: &max_text_length 40
   use_amp: true
   use_wandb: true
-  d2s_train_image_shape: [3, 48, 880]
+  d2s_train_image_shape: [3, 32, 640]
   
 wandb:
   project: "HisDoc1B-5M"
@@ -49,8 +49,8 @@ Architecture:
   Backbone:
     name: SVTRNet
     img_size:
-      - 48
-      - 880
+      - 32
+      - 640
     out_char_num: *max_text_length # W//4 or W//8 or W/12
     out_channels: 256
     patch_merging: Conv
@@ -130,16 +130,16 @@ Train:
           prob: 0.5
           ext_data_num: 2
           image_shape:
-            - 48
-            - 880
+            - 32
+            - 640
             - 3
       - RecAug:
       - CTCLabelEncode: null
       - SVTRRecResizeImg:
           image_shape:
             - 3
-            - 48
-            - 880
+            - 32
+            - 640
           padding: true
       - KeepKeys:
           keep_keys:
@@ -165,8 +165,8 @@ Eval:
       - SVTRRecResizeImg:
           image_shape:
             - 3
-            - 48
-            - 880
+            - 32
+            - 640
           padding: true
       - KeepKeys:
           keep_keys:
