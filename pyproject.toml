@@ -14,7 +14,7 @@ maintainers = [
     {name = "PaddlePaddle", email = "Paddle-better@baidu.com"},
 ]
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.8.1"
 keywords = [
     "ocr",
     "textdetection",
@@ -39,9 +39,28 @@ classifiers = [
     "Topic :: Utilities",
 ]
 dependencies = [
-    "paddlex[ocr,ie,multimodal]==3.0.0",
-    "PyYAML>=6",
+    "albucore>=0.0.17",
+    "albumentations>=1.4.18",
+    "cython>=3.1.2",
+    "huggingface-hub>=0.30.2",
+    "lmdb>=1.6.2",
+    "numpy>=1.24.4",
+    "opencv-contrib-python>=4.10.0.84",
+    "opencv-python>=4.11.0.86",
+    "packaging>=24.2",
+    "paddlepaddle-gpu>=2.6.2",
+    "paddlex[ie,multimodal,ocr]==3.0.0",
+    "pillow>=10.4.0",
+    "pyclipper>=1.3.0.post6",
+    "pyyaml>=6",
+    "rapidfuzz>=3.9.7",
+    "requests>=2.32.3",
+    "scikit-image>=0.21.0",
+    "setuptools>=75.3.2",
+    "shapely>=2.0.7",
+    "tqdm>=4.67.1",
     "typing-extensions>=4.12",
+    "wandb>=0.20.1",
 ]
 
 [project.urls]
