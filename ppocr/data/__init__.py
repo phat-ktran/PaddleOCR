@@ -37,6 +37,7 @@ from ppocr.data.simple_dataset import SimpleDataSet, MultiScaleDataSet
 from ppocr.data.lmdb_dataset import (
     LMDBDataSet,
     UnifiedLMDBDataSet,
+    LMDBDataSetForEval,
     MultiScaleLMDBDataSet,
     UnifiedMultiScaleLMDBDataSet,
     CurriculumLMDBDataSet,
@@ -96,6 +97,7 @@ def build_dataloader(config, mode, device, logger, seed=None):
         "SimpleDataSet",
         "LMDBDataSet",
         "UnifiedLMDBDataSet",
+        "LMDBDataSetForEval",
         "CurriculumLMDBDataSet",
         "PGDataSet",
         "PubTabDataSet",

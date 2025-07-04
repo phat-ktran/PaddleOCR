@@ -40,6 +40,13 @@ class LMDBDataSet(Dataset):
         loader_config = config[mode]["loader"]
         loader_config["batch_size_per_card"]
         data_dir = dataset_config["data_dir"]
+        self.ignored = set()
+        ignored_list_path = dataset_config.get("ignored_list_path", None)
+        if ignored_list_path:
+            ignored_list = []
+            with open(ignored_list_path, "r") as f:
+                ignored_list = json.load(f)
+            self.ignored = set(ignored_list)
         self.do_shuffle = loader_config["shuffle"]
         self.seed = seed
         self.read_mask = dataset_config.get("read_mask", False)
@@ -180,6 +187,44 @@ class LMDBDataSet(Dataset):
     def __len__(self):
         return self.data_idx_order_list.shape[0]
 
+
+class LMDBDataSetForEval(LMDBDataSet):
+    def __init__(self, config, mode, logger, seed=None):
+        dataset_config = config[mode]["dataset"]
+        self.mode = mode
+        super(LMDBDataSetForEval, self).__init__(config, mode, logger, seed)
+
+    def dataset_traversal(self):
+        """
+        Build and return an N×2 array of [lmdb_idx, sample_idx]
+        but only includes/excludes box_ids per self.mode.
+        """
+        # Pre-calculate total capacity to avoid list resizing
+        rows = []
+        
+        assert self.mode == "Eval"
+
+        for lmdb_idx, lmdb_set in self.lmdb_sets.items():
+            txn = lmdb_set["txn"]
+            num_samples = lmdb_set["num_samples"]
+
+            # Batch process samples to reduce function call overhead
+            for i in range(1, num_samples + 1):
+                # Load only the meta (fast, small)
+                meta = pickle.loads(txn.get(f"meta-{i:09d}".encode()))
+                box_id = meta[3]
+                should_ignore = box_id in self.ignored
+
+                # Optimized filtering logic
+                if not should_ignore:
+                    rows.append((lmdb_idx, i))
+
+        # Use more efficient array creation
+        return np.fromiter(
+            (item for row in rows for item in row),
+            dtype=np.float64,
+            count=len(rows) * 2,
+        ).reshape(-1, 2)
 
 class UnifiedLMDBDataSet(LMDBDataSet):
     def __init__(self, config, mode, logger, seed=None):
