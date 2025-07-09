@@ -39,7 +39,7 @@ Optimizer:
   one_dim_param_no_weight_decay: true
   lr:
     name: Cosine
-    learning_rate: 0.0003 # 8gpus 42bs
+    learning_rate: 0.0003 # 8gpus 40bs
     warmup_epoch: 2
 
 Architecture:
