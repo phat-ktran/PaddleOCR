@@ -9,7 +9,7 @@ Global:
   save_epoch_step: 1
   
   # evaluation is run every 2000 iterations after the 0th iteration
-  eval_batch_step: [0, 50000]
+  eval_batch_step: [0, 95624]
   cal_metric_during_train: true
   pretrained_model:
   checkpoints:
@@ -138,7 +138,7 @@ Train:
             - length
   loader:
     shuffle: true
-    batch_size_per_card: 42
+    batch_size_per_card: 40
     drop_last: true
     num_workers: 12
 
@@ -166,5 +166,5 @@ Eval:
   loader:
     shuffle: false
     drop_last: false
-    batch_size_per_card: 688
+    batch_size_per_card: 640
     num_workers: 8
