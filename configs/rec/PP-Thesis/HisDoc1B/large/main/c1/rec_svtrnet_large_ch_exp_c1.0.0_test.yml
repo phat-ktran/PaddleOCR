@@ -21,13 +21,7 @@ Global:
   infer_mode: false
   use_space_char: false
   save_res_path: null
-  use_wandb: true
   d2s_train_image_shape: [3, 32, 640]
-
-wandb:
-  project: "HisDoc1B-30M"
-  entity: "trankim147-vnu-hcmus"
-  name: "C1.0.0"
 
 Optimizer:
   name: AdamW
@@ -57,7 +51,7 @@ Architecture:
     drop_rate: 0.15
     last_drop: 0.1
     attn_drop_rate: 0.1
-    drop_path_rate: 0.1
+    drop_path_rate: 0.10
     embed_dim: [192, 256, 512]
     depth: [6, 6, 9]
     num_heads: [6, 8, 16]
@@ -108,9 +102,8 @@ Metric:
 
 Train:
   dataset:
-    name: UnifiedLMDBDataSet
-    data_dir: ./train_data/rec/full
-    val_ids: ./train_data/rec/val_ids.json
+    name: LMDBDataSet
+    data_dir: ./train_data/rec/eval
     ext_op_transform_idx: 1
     transforms:
       - DecodeImage:
@@ -138,15 +131,14 @@ Train:
             - length
   loader:
     shuffle: true
-    batch_size_per_card: 48
+    batch_size_per_card: 32
     drop_last: true
     num_workers: 8
 
 Eval:
   dataset:
-    name: UnifiedLMDBDataSet
-    data_dir: ./train_data/rec/full
-    val_ids: ./train_data/rec/val_ids.json
+    name: LMDBDataSet
+    data_dir: ./train_data/rec/eval
     transforms:
       - DecodeImage:
           img_mode: BGR
@@ -166,5 +158,5 @@ Eval:
   loader:
     shuffle: false
     drop_last: false
-    batch_size_per_card: 192
+    batch_size_per_card: 32
     num_workers: 4
