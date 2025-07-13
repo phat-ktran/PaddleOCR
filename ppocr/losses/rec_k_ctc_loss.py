@@ -21,7 +21,7 @@ class KCTCLoss(nn.Layer):
          image *i* k_i times so that we obtain one log-probability
          path for every candidate transcript.
       3. We concatenate all (prediction, candidate) pairs in the
-         mini‐batch → call Paddle’s warp-CTC **once**.
+         mini‐batch → call Paddle's warp-CTC **once**.
       4. The vector of losses (length ∑ k_i) is then split back into
          the original groups; we average inside every group,
          followed by an average over all images in the batch.
@@ -53,15 +53,12 @@ class KCTCLoss(nn.Layer):
         if isinstance(predicts, (list, tuple)):
             predicts = predicts[-1]  # (B,T,C)
 
-        # -> (T, B, C) as required by nn.CTCLoss
-        preds_time_first = predicts.transpose((1, 0, 2))
-        T, B, C = preds_time_first.shape
-
+        B, T, C = predicts.shape
         k_ctc_labels = batch[3]  # (B, max_candidates, max_text_len)
 
         # ------------------------------------------------------------------
-        # 1. build expanded prediction tensor  -------------------------------
-        preds_chunks = []  # every chunk: (T, k_i, C)
+        # 1. collect candidates and build K vector  -------------------------
+        K = []  # number of candidates per image: [k1, k2, ..., kB]
         label_flat = []  # concatenated labels
         label_len = []  # len of every label
         group_pos = []  # [ (start,end) ] indices after concat
@@ -82,39 +79,28 @@ class KCTCLoss(nn.Layer):
                     else candidate.numpy()
                 )
                 if np.any(candidate_np != 0):  # has non-zero tokens
-                    # Use full sequence length since CTC can handle trailing blanks
-                    # and we can't distinguish between padding zeros and CTC blanks
                     valid_candidates.append(candidate_np)
 
             k_i = len(valid_candidates)
             if k_i == 0:
                 raise ValueError("Sample {} carries zero candidate labels!".format(b))
 
-            # duplicate prediction k_i times along the batch-axis
-            # (T,1,C) -> (T,k_i,C)
-            pred_b = paddle.tile(
-                preds_time_first[:, b : b + 1, :], repeat_times=[1, k_i, 1]
-            )
-            preds_chunks.append(pred_b)
+            K.append(k_i)  # Store number of candidates for this image
 
-            # collect labels
+            # collect labels - use pre-padded labels directly
             for candidate in valid_candidates:
-                # Calculate actual length (excluding trailing padding zeros)
-                # Note: CTC blank token is 0, but we padded with 0s, so we need to find
-                # where the actual sequence ends vs where padding begins
                 candidate_array = np.asarray(candidate, dtype="int32")
 
-                # Find the actual length by removing trailing zeros
-                # We assume that trailing zeros are padding, not legitimate CTC blanks
+                # Calculate actual length (excluding trailing padding zeros)
                 actual_len = len(candidate_array)
                 for i in range(len(candidate_array) - 1, -1, -1):
                     if candidate_array[i] != 0:
                         actual_len = i + 1
                         break
-
                 # Ensure we have at least length 1 (even if it's all blanks)
                 actual_len = max(1, actual_len)
 
+                # Use the already-padded candidate directly
                 label_flat.append(candidate_array)
                 label_len.append(actual_len)
 
@@ -122,28 +108,25 @@ class KCTCLoss(nn.Layer):
             group_pos.append((cursor, cursor + k_i))
             cursor += k_i
 
-        # → (T, Σk_i, C)
-        preds_expand = paddle.concat(preds_chunks, axis=1)
+        # ------------------------------------------------------------------
+        # 2. expand predictions efficiently using repeat_interleave  --------
+        # Single vectorized operation to duplicate predictions
+        preds_expanded = paddle.repeat_interleave(predicts, paddle.to_tensor(K), axis=0)
+
+        # Now transpose to (T, B_expanded, C) as required by nn.CTCLoss
+        preds_expanded = preds_expanded.transpose((1, 0, 2))
 
         # ------------------------------------------------------------------
-        # 2. build paddled label / length tensors  ---------------------------
-        max_lab_len = max(label_len)
-        label_np = np.zeros(
-            (cursor, max_lab_len), dtype="int32"
-        )  # pad with 0 (“blank”)
-        for i, lab in enumerate(label_flat):
-            # Use only the actual length portion of the label
-            actual_len = label_len[i]
-            label_np[i, :actual_len] = lab[:actual_len]
-
-        labels_tensor = paddle.to_tensor(label_np, dtype="int32")
+        # 3. build label tensors (no re-padding needed)  ---------------------
+        # Labels are already padded to max_text_len, use them directly
+        labels_tensor = paddle.to_tensor(np.array(label_flat), dtype="int32")
         input_lengths_tensor = paddle.to_tensor([T] * cursor, dtype="int64")
         label_lengths_tensor = paddle.to_tensor(label_len, dtype="int64")
 
         # ------------------------------------------------------------------
-        # 3. one warp-CTC call + (optional) focal  ---------------------------
+        # 4. one warp-CTC call + (optional) focal  ---------------------------
         loss_vec = self.ctc(
-            preds_expand, labels_tensor, input_lengths_tensor, label_lengths_tensor
+            preds_expanded, labels_tensor, input_lengths_tensor, label_lengths_tensor
         )
         # loss_vec shape = (Σk_i,)
 
@@ -152,10 +135,16 @@ class KCTCLoss(nn.Layer):
             loss_vec = loss_vec * weight
 
         # ------------------------------------------------------------------
-        # 4. regroup & final average  ----------------------------------------
-        sample_loss = []  # one scalar per original image
-        for start, end in group_pos:  # inclusive start, exclusive end
-            sample_loss.append(paddle.mean(loss_vec[start:end]))
+        # 5. regroup & final average  ----------------------------------------
+        # Calculate group sizes from group_pos
+        group_sizes = [end - start for start, end in group_pos]
 
-        loss = paddle.mean(paddle.stack(sample_loss))  # scalar
+        # Split loss_vec into groups efficiently using paddle.split
+        loss_groups = paddle.split(loss_vec, num_or_sections=group_sizes, axis=0)
+
+        # Calculate mean for each group
+        sample_losses = [paddle.mean(group) for group in loss_groups]
+
+        # Final average
+        loss = paddle.mean(paddle.stack(sample_losses))  # scalar
         return {"loss": loss}
