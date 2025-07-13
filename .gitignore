@@ -12,6 +12,7 @@ local/
 
 inference/
 inference_results/
+paddleocr_venv_311/
 output/
 train_data/
 log/
