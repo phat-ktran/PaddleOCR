@@ -194,6 +194,75 @@ class CTCLabelEncode(BaseRecLabelEncode):
         return dict_character
 
 
+class KCTCLabelEncode(CTCLabelEncode):
+    """
+    Encode *k* candidate transcripts per image into integer sequences.
+    Expects:
+      data["k_ctc_labels"] = [str, str, …]  (1 ≤ len ≤ k_max)
+
+    Outputs:
+      data["k_ctc_labels"] = np.array(int32, shape=(max_candidates, max_text_length))
+      Padded and uniform shape for default collate function compatibility
+    """
+
+    def __init__(
+        self,
+        max_text_length,
+        character_dict_path=None,
+        use_space_char=False,
+        max_candidates=16,
+        **kwargs,
+    ):
+        super(KCTCLabelEncode, self).__init__(
+            max_text_length, character_dict_path, use_space_char
+        )
+        self.max_candidates = max_candidates
+
+    def __call__(self, data):
+        # First, call the parent class to process the regular label field
+        data = super(KCTCLabelEncode, self).__call__(data)
+        if data is None:
+            return None
+
+        # if there are no multiple candidates, nothing to do
+        if "k_ctc_labels" not in data or data["k_ctc_labels"] is None:
+            return data
+
+        encoded_list = []
+        for text in data["k_ctc_labels"]:
+            # reuse parent encode() → list[int] or None if invalid
+            seq = self.encode(text)
+            if seq is None:
+                return None
+
+            # Pad sequence to max_text_len
+            padded_seq = seq[: self.max_text_len]  # truncate if too long
+            padded_seq = padded_seq + [0] * (
+                self.max_text_len - len(padded_seq)
+            )  # pad with blank (0)
+            encoded_list.append(padded_seq)
+
+        # Pad number of candidates to max_candidates
+        while len(encoded_list) < self.max_candidates:
+            # Add empty candidate (all blanks)
+            encoded_list.append([0] * self.max_text_len)
+
+        # Truncate if too many candidates
+        encoded_list = encoded_list[: self.max_candidates]
+
+        # Convert to numpy array with uniform shape (max_candidates, max_text_length)
+        data["k_ctc_labels"] = np.array(encoded_list, dtype="int32")
+        # Don't override the length - keep the parent class's length for the regular label
+        return data
+
+    def add_special_char(self, dict_character):
+        """
+        identical to CTCLabelEncode: insert 'blank' at index 0
+        (so that all labels use 1…N, and 0 is reserved for CTC‐blank)
+        """
+        return super(KCTCLabelEncode, self).add_special_char(dict_character)
+
+
 class CTCLabelEncodeWithUnkToken(BaseRecLabelEncode):
     def __init__(
         self, max_text_length, character_dict_path=None, use_space_char=False, **kwargs

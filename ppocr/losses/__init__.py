@@ -30,6 +30,7 @@ from .det_drrg_loss import DRRGLoss
 
 # rec loss
 from .rec_ctc_loss import CTCLoss
+from .rec_k_ctc_loss import KCTCLoss
 from .rec_att_loss import AttentionLoss
 from .rec_srn_loss import SRNLoss
 from .rec_ce_loss import CELoss
@@ -84,6 +85,7 @@ def build_loss(config):
         "SASTLoss",
         "FCELoss",
         "CTCLoss",
+        "KCTCLoss",
         "STCLoss",
         "STCLossV2",
         "ClsLoss",
@@ -127,12 +129,13 @@ def build_loss(config):
     assert module_name in support_dict, Exception(
         "loss only support {}".format(support_dict)
     )
-    
+
     if module_name == "STCLoss":
         from .rec_stc_loss import STCLoss
     if module_name == "STCLossV2":
         from .rec_stc_loss_v2 import STCLoss
+
         module_name = "STCLoss"
-    
+
     module_class = eval(module_name)(**config)
     return module_class
