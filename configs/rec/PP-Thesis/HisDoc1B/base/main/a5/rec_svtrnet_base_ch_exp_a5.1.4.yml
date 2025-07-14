@@ -63,7 +63,7 @@ Architecture:
       - 256
       - 384
     depth:
-      - 6
+      - 3
       - 6
       - 6
     num_heads:
@@ -71,9 +71,6 @@ Architecture:
       - 8
       - 12
     mixer:
-      - Conv
-      - Conv
-      - Conv
       - Conv
       - Conv
       - Conv
