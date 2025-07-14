@@ -4,7 +4,7 @@ Global:
   use_gpu: true
   epoch_num: 40
   distributed: true
-  eval_batch_step: [43405, 8681]
+  eval_batch_step: [43400, 8680]
   log_smooth_window: 20
   print_batch_step: 10
   save_model_dir: ./output/rec_ppocrv5_base_ch_exp_a5.1.5
