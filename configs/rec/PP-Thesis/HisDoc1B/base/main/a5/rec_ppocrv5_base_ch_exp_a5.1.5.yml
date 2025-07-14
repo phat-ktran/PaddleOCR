@@ -4,7 +4,7 @@ Global:
   use_gpu: true
   epoch_num: 40
   distributed: true
-  eval_batch_step: [10000, 2500]
+  eval_batch_step: [43405, 8681]
   log_smooth_window: 20
   print_batch_step: 10
   save_model_dir: ./output/rec_ppocrv5_base_ch_exp_a5.1.5
@@ -37,7 +37,7 @@ Optimizer:
   lr:
     name: Cosine
     learning_rate: 0.0005
-    warmup_epoch: 2
+    warmup_epoch: 4
   regularizer:
     name: L2
     factor: 3.0e-05
@@ -112,9 +112,9 @@ Train:
             - length
   loader:
     shuffle: true
-    batch_size_per_card: 128
+    batch_size_per_card: 72
     drop_last: true
-    num_workers: 16
+    num_workers: 8
 
 Eval:
   dataset:
@@ -141,4 +141,4 @@ Eval:
     shuffle: false
     drop_last: false
     batch_size_per_card: 384
-    num_workers: 12
+    num_workers: 4
