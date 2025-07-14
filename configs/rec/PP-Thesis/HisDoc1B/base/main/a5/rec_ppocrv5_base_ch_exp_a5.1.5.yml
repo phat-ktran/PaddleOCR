@@ -13,7 +13,7 @@ Global:
   calc_epoch_interval: 1
   pretrained_model: https://paddle-model-ecology.bj.bcebos.com/paddlex/official_pretrained_model/PP-OCRv5_server_rec_pretrained.pdparams
   checkpoints: null
-  character_dict_path: ./ppocr/utils/dict/PP-Thesis/hisdoc1b_19k_cleaner.txt
+  character_dict_path: ./ppocr/utils/dict/PP-Thesis/hisdoc1b_19k_clean.txt
   save_inference_dir:
   use_visualdl: false
   infer_img: null
