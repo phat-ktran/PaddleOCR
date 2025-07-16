@@ -121,7 +121,7 @@ Train:
     name: SimpleDataSet
     data_dir: ./train_data/
     label_file_list:
-      - ./train_data/Train_partial_1_candidate_4_ctc.txt
+      - ./train_data/Train_partial_1_candidate_5_ctc.txt
     ext_op_transform_idx: 1
     transforms:
       - DecodeImage:
