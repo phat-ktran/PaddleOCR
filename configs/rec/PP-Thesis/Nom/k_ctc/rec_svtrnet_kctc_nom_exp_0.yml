@@ -1,16 +1,16 @@
 Global:
   model_name: SVTRNet
   debug: false
-  use_gpu: false
-  epoch_num: 20
+  use_gpu: true
+  epoch_num: 50
   distributed: true
   log_smooth_window: 20
   print_batch_step: 10
-  save_model_dir: ./output/rec_svtrnet_kctcbase_nom_exp_0/
+  save_model_dir: ./output/rec_svtrnet_kctc_nom_exp_0/
   save_epoch_step: 1
-  eval_batch_step: [0, 4882]
+  eval_batch_step: [0, 957]
   cal_metric_during_train: true
-  pretrained_model: null
+  pretrained_model: ./output/rec_svtrnet_base_ch_exp_a5.1.0/best_accuracy
   checkpoints: null
   character_dict_path: ./ppocr/utils/dict/PP-Thesis/nomnaocr.txt
   save_inference_dir:
@@ -21,13 +21,13 @@ Global:
   use_space_char: false
   max_text_length: &max_text_length 40
   use_amp: true
-  # use_wandb: true
+  use_wandb: true
   d2s_train_image_shape: [3, 32, 640]
 
-# wandb:
-#   project: "Sino-Nom"
-#   entity: "trankim147-vnu-hcmus"
-#   name: "B1.1.0.1"
+wandb:
+  project: "KCTC"
+  entity: "trankim147-vnu-hcmus"
+  name: "rec_svtrnet_kctc_nom_exp_0"
 
 Optimizer:
   name: AdamW
@@ -39,7 +39,7 @@ Optimizer:
   one_dim_param_no_weight_decay: True
   lr:
     name: Cosine
-    learning_rate: 0.0005
+    learning_rate: 0.0001
     warmup_epoch: 5
 
 Architecture:
@@ -119,9 +119,9 @@ Metric:
 Train:
   dataset:
     name: SimpleDataSet
-    data_dir: ./train_data/nomna-ocr/
+    data_dir: ./train_data/nomna_ihr_kst/
     label_file_list:
-      - ./train_data/nomna-ocr/Train_partial_1_candidate_4.txt
+      - ./train_data/nomna_ihr_kst/Train_partial_1_candidate_4.txt
     ext_op_transform_idx: 1
     transforms:
       - DecodeImage:
@@ -151,16 +151,16 @@ Train:
             - k_ctc_labels
   loader:
     shuffle: true
-    batch_size_per_card: 1
+    batch_size_per_card: 32
     drop_last: true
-    num_workers: 1
+    num_workers: 8
 
 Eval:
   dataset:
     name: SimpleDataSet
-    data_dir: ./train_data/nomna-ocr/
+    data_dir: ./train_data/nomna_ihr_kst/
     label_file_list:
-      - ./train_data/nomna-ocr/Validate_poem.txt
+      - ./train_data/nomna_ihr_kst/nomna-validate_poem.txt
     transforms:
       - DecodeImage:
           img_mode: BGR
@@ -180,5 +180,5 @@ Eval:
   loader:
     shuffle: false
     drop_last: false
-    batch_size_per_card: 1
-    num_workers: 1
+    batch_size_per_card: 32
+    num_workers: 8
