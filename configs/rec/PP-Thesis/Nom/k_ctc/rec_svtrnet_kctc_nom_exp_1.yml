@@ -6,7 +6,7 @@ Global:
   distributed: true
   log_smooth_window: 20
   print_batch_step: 10
-  save_model_dir: ./output/rec_svtrnet_kctc_nom_exp_0/
+  save_model_dir: ./output/rec_svtrnet_kctc_nom_exp_1/
   save_epoch_step: 1
   eval_batch_step: [0, 957]
   cal_metric_during_train: true
@@ -27,7 +27,7 @@ Global:
 wandb:
   project: "KCTC"
   entity: "trankim147-vnu-hcmus"
-  name: "rec_svtrnet_kctc_nom_exp_0"
+  name: "rec_svtrnet_kctc_nom_exp_1"
 
 Optimizer:
   name: AdamW
