@@ -106,7 +106,7 @@ Architecture:
     name: CTCHead
 
 Loss:
-  name: KCTCLoss # mean in each group of candidates and mean accross all groups
+  name: KCTCLoss # mean in each group of candidates and min accross all groups
   use_focal_loss: true
 
 PostProcess:
