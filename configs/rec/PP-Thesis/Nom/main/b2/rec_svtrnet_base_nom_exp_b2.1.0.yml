@@ -39,7 +39,7 @@ Optimizer:
   one_dim_param_no_weight_decay: True
   lr:
     name: Cosine
-    learning_rate: 0.0001
+    learning_rate: 0.00015 # 30bs x 2gpus
     warmup_epoch: 5
 
 Architecture:
@@ -158,7 +158,7 @@ Train:
             - length
   loader:
     shuffle: true
-    batch_size_per_card: 32
+    batch_size_per_card: 30
     drop_last: true
     num_workers: 8
 
