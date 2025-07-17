@@ -2,33 +2,32 @@ Global:
   model_name: SVTRNet
   debug: false
   use_gpu: true
-  epoch_num: 20
+  epoch_num: 50
   distributed: true
   log_smooth_window: 20
-  print_batch_step: 10
-  save_model_dir: ./output/rec_svtrnet_base_nom_exp_b1.1.0/
-  save_epoch_step: 1
-  eval_batch_step: [0, 4882]
+  print_batch_step: 100
+  save_model_dir: ./output/rec_svtrnet_base_nom_exp_b2.1.0/
+  save_epoch_step: 10
+  eval_batch_step: [5950, 1190]
   cal_metric_during_train: true
 
   pretrained_model: ./output/rec_svtrnet_base_ch_exp_a5.1.0/best_accuracy
   checkpoints: null
-  character_dict_path: ./ppocr/utils/dict/PP-Thesis/hisdoc1b_16k_nom_all.txt
+  character_dict_path: ./ppocr/utils/dict/PP-Thesis/nom_clclab.txt
   save_inference_dir:
   use_visualdl: false
   infer_img: null
   save_res_path: null
   infer_mode: false
   use_space_char: false
-  max_text_length: &max_text_length 40
-  use_amp: true
+  max_text_length: 40
   use_wandb: true
-  d2s_train_image_shape: [3, 32, 640]
+  d2s_train_image_shape: [3, 48, 480]
   
 wandb:
   project: "Sino-Nom"
   entity: "trankim147-vnu-hcmus"
-  name: "B1.1.0"
+  name: "B2.1.0"
 
 Optimizer:
   name: AdamW
@@ -40,7 +39,7 @@ Optimizer:
   one_dim_param_no_weight_decay: True
   lr:
     name: Cosine
-    learning_rate: 0.0005
+    learning_rate: 0.0001
     warmup_epoch: 5
 
 Architecture:
@@ -50,9 +49,9 @@ Architecture:
   Backbone:
     name: SVTRNet
     img_size:
-      - 32
-      - 640
-    out_char_num: *max_text_length # W//4 or W//8 or W/12
+      - 48
+      - 480
+    out_char_num: 40 # W//4 or W//8 or W/12
     out_channels: 256
     patch_merging: Conv
     patch_size: [4, 8]
@@ -122,30 +121,35 @@ Train:
     name: SimpleDataSet
     data_dir: ./train_data/
     label_file_list:
-      - ./train_data/ihr-train.txt
-      - ./train_data/ihr-val.txt
-      - ./train_data/kinh_su_tu.txt
-      - ./train_data/nomna-train.txt
-      - ./train_data/hisdoc1b_500k.txt
+      - ./train_data/nomna_train.txt
+      - ./train_data/CPNK-vertical_all.txt
+      - ./train_data/HVK_001_vertical_v1_y850_all.txt
+      - ./train_data/kinh_su_tu_w615_all.txt
+      - ./train_data/RBI_003_02_all.txt
+      - ./train_data/RBI_003_03_all.txt
+      - ./train_data/sac-phong_all.txt
+      - ./train_data/Tale-of-Kieu-1870_all.txt
+      - ./train_data/Tale-of-Kieu-1902_all.txt
+      - ./train_data/ThachSanh-Doc_all.txt  
     ext_op_transform_idx: 1
     transforms:
       - DecodeImage:
           img_mode: BGR
           channel_first: false
       - RecConAug:
-          prob: 0.5
+          prob: 0.6
           ext_data_num: 2
           image_shape:
-            - 32
-            - 640
+            - 48
+            - 480
             - 3
       - RecAug:
       - CTCLabelEncode: null
       - SVTRRecResizeImg:
           image_shape:
             - 3
-            - 32
-            - 640
+            - 48
+            - 480
           padding: true
       - KeepKeys:
           keep_keys:
@@ -154,16 +158,16 @@ Train:
             - length
   loader:
     shuffle: true
-    batch_size_per_card: 48
+    batch_size_per_card: 32
     drop_last: true
-    num_workers: 16
+    num_workers: 8
 
 Eval:
   dataset:
     name: SimpleDataSet
-    data_dir: ./train_data/ 
+    data_dir: ./train_data/
     label_file_list:
-      - ./train_data/nomna-validate.txt
+      - ./train_data/nomna_validate.txt
     transforms:
       - DecodeImage:
           img_mode: BGR
@@ -172,8 +176,8 @@ Eval:
       - SVTRRecResizeImg:
           image_shape:
             - 3
-            - 32
-            - 640
+            - 48
+            - 480
           padding: true
       - KeepKeys:
           keep_keys:
@@ -183,5 +187,5 @@ Eval:
   loader:
     shuffle: false
     drop_last: false
-    batch_size_per_card: 384
-    num_workers: 12
+    batch_size_per_card: 192
+    num_workers: 4
