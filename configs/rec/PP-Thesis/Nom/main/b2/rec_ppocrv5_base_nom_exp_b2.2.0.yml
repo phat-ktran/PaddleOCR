@@ -35,7 +35,7 @@ Optimizer:
   beta2: 0.999
   lr:
     name: Cosine
-    learning_rate: 0.00005
+    learning_rate: 0.000075
     warmup_epoch: 5
   regularizer:
     name: L2
@@ -124,7 +124,7 @@ Train:
   sampler:
     name: MultiScaleSampler
     scales: [[480, 32], [480, 48], [480, 64]]
-    first_bs: &bs 64
+    first_bs: &bs 96
     fix_bs: false
     divided_factor: [8, 16] # w, h
     is_training: True
