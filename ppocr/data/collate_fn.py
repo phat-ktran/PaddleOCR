@@ -56,7 +56,8 @@ class ListCollator(object):
         for idx in to_tensor_idxs:
             data_dict[idx] = paddle.to_tensor(data_dict[idx])
         return list(data_dict.values())
-        
+
+
 class FilterListCollator(object):
     """
     data batch
@@ -65,7 +66,23 @@ class FilterListCollator(object):
     def __call__(self, batch):
         # todo：support batch operators
         data_dict = defaultdict(list)
-        to_tensor_idxs = [0, 1, 2]
+        to_tensor_idxs = [0, 2]
+        for sample in batch:
+            for idx, v in enumerate(sample):
+                data_dict[idx].append(v)
+        for idx in to_tensor_idxs:
+            data_dict[idx] = paddle.to_tensor(data_dict[idx])
+        return list(data_dict.values())
+
+
+class SoftCTCListCollator(object):
+    """
+    data batch
+    """
+
+    def __call__(self, batch):
+        data_dict = defaultdict(list)
+        to_tensor_idxs = [0, 2]
         for sample in batch:
             for idx, v in enumerate(sample):
                 data_dict[idx].append(v)
@@ -101,7 +118,7 @@ class DyMaskCollator(object):
 
     def __call__(self, batch):
         max_width, max_height, max_length = 0, 0, 0
-        bs, channel = len(batch), batch[0][0].shape[0]
+        _bs, channel = len(batch), batch[0][0].shape[0]
         proper_items = []
         for item in batch:
             if (
@@ -116,12 +133,16 @@ class DyMaskCollator(object):
             max_length = len(item[1]) if len(item[1]) > max_length else max_length
             proper_items.append(item)
 
-        images, image_masks = np.zeros(
-            (len(proper_items), channel, max_height, max_width), dtype="float32"
-        ), np.zeros((len(proper_items), 1, max_height, max_width), dtype="float32")
-        labels, label_masks = np.zeros(
-            (len(proper_items), max_length), dtype="int64"
-        ), np.zeros((len(proper_items), max_length), dtype="int64")
+        images, image_masks = (
+            np.zeros(
+                (len(proper_items), channel, max_height, max_width), dtype="float32"
+            ),
+            np.zeros((len(proper_items), 1, max_height, max_width), dtype="float32"),
+        )
+        labels, label_masks = (
+            np.zeros((len(proper_items), max_length), dtype="int64"),
+            np.zeros((len(proper_items), max_length), dtype="int64"),
+        )
 
         for i in range(len(proper_items)):
             _, h, w = proper_items[i][0].shape
@@ -161,9 +182,8 @@ class UniMERNetCollator(object):
     """
 
     def __call__(self, batch):
-
         max_width, max_height, max_length = 0, 0, 0
-        bs, channel = len(batch), batch[0][0].shape[0]
+        _bs, channel = len(batch), batch[0][0].shape[0]
         proper_items = []
         for item in batch:
             max_height = (
@@ -177,9 +197,10 @@ class UniMERNetCollator(object):
             (len(proper_items), channel, max_height, max_width), dtype="float32"
         )
 
-        labels, label_masks = np.ones(
-            (len(proper_items), max_length), dtype="int64"
-        ), np.zeros((len(proper_items), max_length), dtype="int64")
+        labels, label_masks = (
+            np.ones((len(proper_items), max_length), dtype="int64"),
+            np.zeros((len(proper_items), max_length), dtype="int64"),
+        )
         for i in range(len(proper_items)):
             _, h, w = proper_items[i][0].shape
             images[i][:, :h, :w] = proper_items[i][0]

@@ -30,6 +30,7 @@ from .det_drrg_loss import DRRGLoss
 
 # rec loss
 from .rec_ctc_loss import CTCLoss
+from .rec_soft_ctc_loss import SoftCTCLoss
 from .rec_k_ctc_loss import KCTCLoss
 from .rec_att_loss import AttentionLoss
 from .rec_srn_loss import SRNLoss
@@ -85,6 +86,7 @@ def build_loss(config):
         "SASTLoss",
         "FCELoss",
         "CTCLoss",
+        "SoftCTCLoss",
         "KCTCLoss",
         "STCLoss",
         "STCLossV2",
