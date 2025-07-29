@@ -106,7 +106,9 @@ def init_args():
     parser.add_argument("--use_space_char", type=str2bool, default=True)
     parser.add_argument("--vis_font_path", type=str, default="./doc/fonts/simfang.ttf")
     parser.add_argument("--drop_score", type=float, default=0.5)
-
+    parser.add_argument("--return_alignment_info", type=str2bool, default=False)
+    parser.add_argument("--topk_chars", type=int, default=5)
+    
     # params for e2e
     parser.add_argument("--e2e_algorithm", type=str, default="PGNet")
     parser.add_argument("--e2e_model_dir", type=str)

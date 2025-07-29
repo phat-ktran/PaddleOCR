@@ -41,7 +41,7 @@ class TextRecognizer(object):
         if os.path.exists(f"{args.rec_model_dir}/inference.yml"):
             model_config = utility.load_config(f"{args.rec_model_dir}/inference.yml")
             model_name = model_config.get("Global", {}).get("model_name", "")
-            if model_name:
+            if not model_name:
                 raise ValueError(
                     f"{model_name} is not supported. Please check if the model is supported by the PaddleOCR wheel."
                 )
@@ -75,6 +75,12 @@ class TextRecognizer(object):
         elif self.rec_algorithm == "RARE":
             postprocess_params = {
                 "name": "AttnLabelDecode",
+                "character_dict_path": args.rec_char_dict_path,
+                "use_space_char": args.use_space_char,
+            }
+        elif self.rec_algorithm == "SVTRNet_Beam":
+            postprocess_params = {
+                "name": "BeamCTCLabelDecode",
                 "character_dict_path": args.rec_char_dict_path,
                 "use_space_char": args.use_space_char,
             }
@@ -192,6 +198,8 @@ class TextRecognizer(object):
                 logger=logger,
             )
         self.return_word_box = args.return_word_box
+        self.return_alignment_info = args.return_alignment_info
+        self.topk_chars = args.topk_chars
 
     def resize_norm_img(self, img, max_wh_ratio):
         imgC, imgH, imgW = self.rec_image_shape
@@ -826,13 +834,26 @@ class TextRecognizer(object):
                     wh_ratio_list=wh_ratio_list,
                     max_wh_ratio=max_wh_ratio,
                 )
+            elif self.postprocess_params["name"] == "BeamCTCLabelDecode":
+                rec_result = self.postprocess_op(
+                    preds,
+                    topk_chars=self.topk_chars,
+                    return_alignment_info=self.return_alignment_info,
+                    return_word_box=self.return_word_box,
+                    wh_ratio_list=wh_ratio_list,
+                    max_wh_ratio=max_wh_ratio,
+                )
             elif self.postprocess_params["name"] == "LaTeXOCRDecode":
                 preds = [p.reshape([-1]) for p in preds]
                 rec_result = self.postprocess_op(preds)
             else:
                 rec_result = self.postprocess_op(preds)
-            for rno in range(len(rec_result)):
-                rec_res[indices[beg_img_no + rno]] = rec_result[rno]
+            if self.postprocess_params["name"] == "BeamCTCLabelDecode":
+                for rno in range(len(rec_result)):
+                    rec_res[indices[beg_img_no + rno]] = rec_result
+            else:
+                for rno in range(len(rec_result)):
+                    rec_res[indices[beg_img_no + rno]] = rec_result[rno]
             if self.benchmark:
                 self.autolog.times.end(stamp=True)
         return rec_res, time.time() - st
