@@ -1,0 +1,178 @@
+Global:
+  model_name: PPHGNetV2_B4 # To use static model for inference.
+  debug: false
+  use_gpu: true
+  epoch_num: 50
+  distributed: true
+  eval_batch_step: [0,663]
+  log_smooth_window: 20
+  print_batch_step: 10
+  save_model_dir: ./output/rec_ppocrv5_base_nom_exp_b2.3.0
+  save_epoch_step: 1
+  cal_metric_during_train: true
+  calc_epoch_interval: 1
+  pretrained_model: ./output/rec_ppocrv5_base_ch_exp_a5.0.1.2/best_accuracy
+  checkpoints: null
+  character_dict_path: ./ppocr/utils/dict/PP-Thesis/nom_clclab_v2.txt
+  save_inference_dir:
+  use_visualdl: false
+  infer_img: null
+  save_res_path: null
+  infer_mode: false
+  use_space_char: false
+  max_text_length: &max_text_length 40
+  use_wandb: true
+  d2s_train_image_shape: [3, 48, 1120]
+
+wandb:
+  project: "Sino-Nom"
+  entity: "trankim147-vnu-hcmus"
+  name: "PPOCRv5-B2.3.0"
+
+Optimizer:
+  name: Adam
+  beta1: 0.9
+  beta2: 0.999
+  lr:
+    name: Cosine
+    learning_rate: 0.000075
+    warmup_epoch: 5
+  regularizer:
+    name: L2
+    factor: 3.0e-05
+
+Architecture:
+  model_type: rec
+  algorithm: SVTR_HGNet
+  Transform:
+    name: TPS
+    num_fiducial: 10
+    loc_lr: 0.1
+    model_name: small
+  Backbone:
+    name: PPHGNetV2_B4
+    text_rec: True
+    stem_channels: [3, 32, 48]
+    out_char_num: 40 # for training mode
+    out_avg_kernel_size: [3, 7] # for inference mode
+    use_glb_avg: true
+    stage_config_rec:
+      # in_channels, mid_channels, out_channels, num_blocks, is_downsample, light_block, kernel_size, layer_num, stride
+      stage1: [48, 48, 128, 1, True, False, 3, 6, [2, 1]]
+      stage2: [128, 96, 512, 1, True, False, 3, 6, [1, 2]]
+      stage3: [512, 192, 1024, 3, True, True, 5, 6, [2, 1]]
+      stage4: [1024, 384, 2048, 1, True, True, 5, 6, [2, 1]]
+  Head:
+    name: MultiHead
+    head_list:
+      - CTCHead:
+          Neck:
+            name: svtr
+            dims: 120
+            depth: 2
+            hidden_dims: 120
+            kernel_size: [1, 3]
+            use_guide: True
+          Head:
+            fc_decay: 0.00001
+      - NRTRHead:
+          nrtr_dim: 384
+          max_text_length: *max_text_length
+
+Loss:
+  name: MultiLoss
+  weight_1: 1.0
+  weight_2: 1.0
+  loss_config_list:
+    - CTCLoss:
+        use_focal_loss: True
+    - NRTRLoss:
+
+PostProcess:
+  name: CTCLabelDecode
+
+Metric:
+  name: RecMetric
+  main_indicator: acc
+
+Train:
+  dataset:
+    name: SimpleDataSet
+    data_dir: ./train_data/
+    ext_op_transform_idx: 1
+    label_file_list:
+      - ./train_data/Labels/Train/nomna_train.txt
+      - ./train_data/Labels/Train/CPNK-vertical_all.txt
+      - ./train_data/Labels/Train/HVK_001_vertical_v1_y850_all.txt
+      - ./train_data/Labels/Train/RBI_003_02_all.txt
+      - ./train_data/Labels/Train/RBI_003_03_all.txt
+      - ./train_data/Labels/Train/sac-phong_all.txt
+      - ./train_data/Labels/Train/Tale-of-Kieu-1870_all.txt
+      - ./train_data/Labels/Train/Tale-of-Kieu-1902_all.txt
+      - ./train_data/Labels/Train/ThachSanh-Doc_all.txt 
+      - ./train_data/Labels/Train/RB_HuongSonQuanTheAm_train.txt
+      - ./train_data/Labels/Train/RCM_001_000_train.txt
+      - ./train_data/Labels/Train/RCM_003_000_train.txt
+      - ./train_data/Labels/Train/RCM_004_000_train.txt
+      - ./train_data/Labels/Train/RCM_005_000_train.txt
+      - ./train_data/Labels/Train/RCM_006_000_train.txt
+      - ./train_data/Labels/Train/RCM_007_000_train.txt
+      - ./train_data/Labels/Train/RCM_009_000_train.txt
+      - ./train_data/Labels/Train/RCM_00X_000_train.txt
+      - ./train_data/Labels/Train/RCM_010_000_train.txt
+      - ./train_data/Labels/Train/RCM_011_000_train.txt
+      - ./train_data/Labels/Train/RCM_012_000_train.txt
+      - ./train_data/Labels/Train/RCM_013_000_train.txt
+      - ./train_data/Labels/Train/RCM_014_000_train.txt
+      - ./train_data/Labels/Train/RCM_016_000_train.txt
+      - ./train_data/Labels/Train/RCM_019_002_train.txt
+      - ./train_data/Labels/Train/RCM_019_003_train.txt
+      - ./train_data/Labels/Train/RCM_020_000_train.txt
+      - ./train_data/Labels/Train/RCM_021_000_train.txt
+    transforms:
+      - DecodeImage:
+          img_mode: BGR
+          channel_first: false
+      - RecAug:
+      - MultiLabelEncode:
+          gtc_encode: NRTRLabelEncode
+      - RecResizeImg:
+          image_shape: [3, 48, 1120]
+      - KeepKeys:
+          keep_keys:
+            - image
+            - label_ctc
+            - label_gtc
+            - length
+  loader:
+    shuffle: true
+    batch_size_per_card: 42
+    drop_last: true
+    num_workers: 8
+
+Eval:
+  dataset:
+    name: SimpleDataSet
+    data_dir: ./train_data/
+    label_file_list:
+      - ./train_data/Labels/Validate/nomna_validate.txt
+    transforms:
+    - DecodeImage:
+        img_mode: BGR
+        channel_first: false
+    - MultiLabelEncode:
+        gtc_encode: NRTRLabelEncode
+    - RecResizeImg:
+        image_shape: [3, 48, 1120]
+    - KeepKeys:
+        keep_keys:
+        - image
+        - label_ctc
+        - label_gtc
+        - length
+        - valid_ratio
+  loader:
+    shuffle: false
+    drop_last: false
+    batch_size_per_card: 128
+    num_workers: 4
