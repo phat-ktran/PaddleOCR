@@ -4,7 +4,7 @@ Global:
   use_gpu: true
   epoch_num: 50
   distributed: true
-  eval_batch_step: [0,745]
+  eval_batch_step: [0,638]
   log_smooth_window: 20
   print_batch_step: 10
   save_model_dir: ./output/rec_ppocrv5_base_nom_exp_b2.3.0
@@ -146,7 +146,7 @@ Train:
             - length
   loader:
     shuffle: true
-    batch_size_per_card: 64
+    batch_size_per_card: 56
     drop_last: true
     num_workers: 8
 
