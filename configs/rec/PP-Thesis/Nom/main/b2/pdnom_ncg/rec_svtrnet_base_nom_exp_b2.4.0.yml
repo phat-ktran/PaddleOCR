@@ -8,7 +8,7 @@ Global:
   print_batch_step: 10
   save_model_dir: ./output/rec_svtrnet_base_nom_exp_b2.4.0/
   save_epoch_step: 1
-  eval_batch_step: [0, 1490]
+  eval_batch_step: [0, 4331]
   cal_metric_during_train: true
   pretrained_model: ./output/rec_svtrnet_base_ch_exp_a5.1.0/best_accuracy
   checkpoints: null
