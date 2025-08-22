@@ -23,6 +23,7 @@ Global:
   override_head: true
   top_k: 19001
   use_wandb: true
+  use_amp: true
   d2s_train_image_shape: [3, 48, 960]
   
 wandb:
@@ -40,8 +41,8 @@ Optimizer:
   one_dim_param_no_weight_decay: True
   lr:
     name: Cosine
-    learning_rate: 0.00015 # 24bs x 8gpus
-    warmup_epoch: 5
+    learning_rate: 0.0001 # 16bs x 8gpus
+    warmup_epoch: 3
     eta_min: 0.000005
 
 Architecture:
@@ -138,25 +139,25 @@ Train:
       - ./train_data/Labels/Train/Tale-of-Kieu-1870_all.txt
       - ./train_data/Labels/Train/Tale-of-Kieu-1902_all.txt
       - ./train_data/Labels/Train/ThachSanh-Doc_all.txt 
-      - ./train_data/Labels/Train/NomCongGiao/RB_HuongSonQuanTheAm_replace_all.txt
-      - ./train_data/Labels/Train/NomCongGiao/RCM_001_000_replace_all.txt
-      - ./train_data/Labels/Train/NomCongGiao/RCM_003_000_replace_all.txt
-      - ./train_data/Labels/Train/NomCongGiao/RCM_004_000_replace_all.txt
-      - ./train_data/Labels/Train/NomCongGiao/RCM_005_000_replace_all.txt
-      - ./train_data/Labels/Train/NomCongGiao/RCM_006_000_replace_all.txt
-      - ./train_data/Labels/Train/NomCongGiao/RCM_007_000_replace_all.txt
-      - ./train_data/Labels/Train/NomCongGiao/RCM_009_000_replace_all.txt
-      - ./train_data/Labels/Train/NomCongGiao/RCM_00X_000_replace_all.txt
-      - ./train_data/Labels/Train/NomCongGiao/RCM_010_000_replace_all.txt
-      - ./train_data/Labels/Train/NomCongGiao/RCM_011_000_replace_all.txt
-      - ./train_data/Labels/Train/NomCongGiao/RCM_012_000_replace_all.txt
-      - ./train_data/Labels/Train/NomCongGiao/RCM_013_000_replace_all.txt
-      - ./train_data/Labels/Train/NomCongGiao/RCM_014_000_replace_all.txt
-      - ./train_data/Labels/Train/NomCongGiao/RCM_016_000_replace_all.txt
-      - ./train_data/Labels/Train/NomCongGiao/RCM_019_002_replace_all.txt
-      - ./train_data/Labels/Train/NomCongGiao/RCM_019_003_replace_all.txt
-      - ./train_data/Labels/Train/NomCongGiao/RCM_020_000_replace_all.txt
-      - ./train_data/Labels/Train/NomCongGiao/RCM_021_000_replace_all.txt
+      - ./train_data/Labels/Train/NomCongGiao/RB_HuongSonQuanTheAm_train.txt
+      - ./train_data/Labels/Train/NomCongGiao/RCM_001_000_train.txt
+      - ./train_data/Labels/Train/NomCongGiao/RCM_003_000_train.txt
+      - ./train_data/Labels/Train/NomCongGiao/RCM_004_000_train.txt
+      - ./train_data/Labels/Train/NomCongGiao/RCM_005_000_train.txt
+      - ./train_data/Labels/Train/NomCongGiao/RCM_006_000_train.txt
+      - ./train_data/Labels/Train/NomCongGiao/RCM_007_000_train.txt
+      - ./train_data/Labels/Train/NomCongGiao/RCM_009_000_train.txt
+      - ./train_data/Labels/Train/NomCongGiao/RCM_00X_000_train.txt
+      - ./train_data/Labels/Train/NomCongGiao/RCM_010_000_train.txt
+      - ./train_data/Labels/Train/NomCongGiao/RCM_011_000_train.txt
+      - ./train_data/Labels/Train/NomCongGiao/RCM_012_000_train.txt
+      - ./train_data/Labels/Train/NomCongGiao/RCM_013_000_train.txt
+      - ./train_data/Labels/Train/NomCongGiao/RCM_014_000_train.txt
+      - ./train_data/Labels/Train/NomCongGiao/RCM_016_000_train.txt
+      - ./train_data/Labels/Train/NomCongGiao/RCM_019_002_train.txt
+      - ./train_data/Labels/Train/NomCongGiao/RCM_019_003_train.txt
+      - ./train_data/Labels/Train/NomCongGiao/RCM_020_000_train.txt
+      - ./train_data/Labels/Train/NomCongGiao/RCM_021_000_train.txt
     ext_op_transform_idx: 1
     transforms:
       - DecodeImage:
@@ -184,7 +185,7 @@ Train:
             - length
   loader:
     shuffle: true
-    batch_size_per_card: 24
+    batch_size_per_card: 16
     drop_last: true
     num_workers: 8
 
