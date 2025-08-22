@@ -73,7 +73,7 @@ def load_model(config, model, optimizer=None, model_type="det"):
     global_config = config["Global"]
     checkpoints = global_config.get("checkpoints")
     pretrained_model = global_config.get("pretrained_model")
-    handle_mismatch = global_config.get("handle_mismatch", False)
+    global_config.get("handle_mismatch", False)
     best_model_dict = {}
     is_float16 = False
     is_nlp_model = model_type == "kie" and config["Architecture"]["algorithm"] not in [
@@ -196,7 +196,7 @@ def load_pretrained_params(model, path, config):
     for k1 in params.keys():
         not_found = k1 not in state_dict.keys()
         k1_mapped = k1
-        
+
         if mapped_key_prefixes and not_found:
             # Check if k1 has any of the supported prefixes
             for prefix in mapped_key_prefixes:
@@ -207,7 +207,7 @@ def load_pretrained_params(model, path, config):
                     not_found = k1_mapped not in state_dict
                     if not not_found:
                         break
-            
+
         if not_found:
             logger.warning("The pretrained params {} not in model".format(k1_mapped))
         else:
@@ -223,44 +223,62 @@ def load_pretrained_params(model, path, config):
                         k1, params[k1].shape, k1, state_dict[k1_mapped].shape
                     )
                 )
-                
-                if k1 == "backbone.pos_embed":                    
+
+                if k1 == "backbone.pos_embed":
+
                     def resize_pos_embed(pretrained_pos_embed, target_shape):
                         """
                         Resize pretrained positional embeddings to match the target shape using 1D interpolation.
-                        
+
                         Args:
                             pretrained_pos_embed (Tensor): Pretrained positional embeddings [1, num_patches_old, embed_dim].
                             target_shape (tuple): Desired shape [1, num_patches_new, embed_dim].
-                        
+
                         Returns:
                             Tensor: Resized positional embeddings.
                         """
                         # Ensure the input is a 3D tensor
-                        assert pretrained_pos_embed.ndim == 3, f"Expected 3D tensor, got {pretrained_pos_embed.ndim}D"
-                        
+                        assert pretrained_pos_embed.ndim == 3, (
+                            f"Expected 3D tensor, got {pretrained_pos_embed.ndim}D"
+                        )
+
                         # Get dimensions
                         _, num_patches_old, embed_dim = pretrained_pos_embed.shape
                         _, num_patches_new, embed_dim_new = target_shape
-                        
-                        assert embed_dim == embed_dim_new, f"Embedding dimensions must match: {embed_dim} vs {embed_dim_new}"
-                        
+
+                        assert embed_dim == embed_dim_new, (
+                            f"Embedding dimensions must match: {embed_dim} vs {embed_dim_new}"
+                        )
+
                         # Reshape to [1, embed_dim, num_patches_old] for 1D interpolation
-                        pos_embed = pretrained_pos_embed.transpose([0, 2, 1])  # [1, embed_dim, num_patches_old]
-                        
+                        pos_embed = pretrained_pos_embed.transpose(
+                            [0, 2, 1]
+                        )  # [1, embed_dim, num_patches_old]
+
                         # Interpolate to new number of patches
-                        pos_embed = F.interpolate(pos_embed, size=(num_patches_new,), mode='linear', align_corners=False)
-                        
+                        pos_embed = F.interpolate(
+                            pos_embed,
+                            size=[num_patches_new],
+                            mode="linear",
+                            align_corners=False,
+                            data_format="NCW",
+                        )
+
                         # Reshape back to [1, num_patches_new, embed_dim]
-                        pos_embed = pos_embed.transpose([0, 2, 1])  # [1, num_patches_new, embed_dim]
-                        
+                        pos_embed = pos_embed.transpose(
+                            [0, 2, 1]
+                        )  # [1, num_patches_new, embed_dim]
+
                         return pos_embed
+
                     new_state_dict[k1_mapped] = resize_pos_embed(
                         pretrained_pos_embed=params[k1].clone(),
-                        target_shape=state_dict[k1_mapped].shape
+                        target_shape=state_dict[k1_mapped].shape,
                     )
                 else:
-                    overlap_dim = min(params[k1].shape[-1], state_dict[k1_mapped].shape[-1])
+                    overlap_dim = min(
+                        params[k1].shape[-1], state_dict[k1_mapped].shape[-1]
+                    )
                     if not top_k:
                         top_k = overlap_dim
                     new_state_dict[k1_mapped] = state_dict[k1_mapped].clone()
@@ -364,14 +382,14 @@ def save_model(
                 "commit_message",
                 f"Upload {prefix} model" + (" (best model)" if is_best else ""),
             )
-    
+
             if repo_id is None:
                 logger.warning("repo_id not provided, cannot push to Hugging Face Hub")
                 return
-    
+
             # Initialize HF API
             api = HfApi(token=token)
-    
+
             # Push to Hub
             logger.info(f"Pushing model to Hugging Face Hub: {repo_id}")
             api.upload_folder(
@@ -382,7 +400,7 @@ def save_model(
                 run_as_future=run_as_future,
                 commit_message=commit_message,
             )
-    
+
             logger.info(f"Model successfully pushed to HF Hub: {repo_id}")
         except ImportError:
             logger.warning("huggingface_hub not installed. Cannot push to Hub.")

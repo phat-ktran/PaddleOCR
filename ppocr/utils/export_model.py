@@ -387,6 +387,9 @@ def export_single_model(
             print("Skipping import of the encryption module")
         paddle_version = version.parse(paddle.__version__)
         if config["Global"].get("export_with_pir", True):
+            print(paddle_version >= version.parse("3.0.0b2"))
+            print(paddle_version)
+            print(os.environ.get("FLAGS_enable_pir_api", None) not in ["0", "False"])
             assert (
                 paddle_version >= version.parse("3.0.0b2")
                 or paddle_version == version.parse("0.0.0")
