@@ -126,8 +126,6 @@ Train:
     name: SimpleDataSet
     data_dir: ./train_data/
     label_file_list:
-      - ./train_data/Labels/Train/HisDoc1B_300k.txt
-      - ./train_data/Labels/Train/M5HisDoc_Regular_40.txt
       - ./train_data/Labels/Train/nomna_train.txt
       - ./train_data/Labels/Train/CPNK-vertical_all.txt
       - ./train_data/Labels/Train/HVK_001_vertical_v1_y850_all.txt
