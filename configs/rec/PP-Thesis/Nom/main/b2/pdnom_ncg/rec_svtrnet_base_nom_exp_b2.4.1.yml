@@ -156,7 +156,7 @@ Train:
       - ./train_data/Labels/Train/NomCongGiao/RCM_019_003_train.txt
       - ./train_data/Labels/Train/NomCongGiao/RCM_020_000_train.txt
       - ./train_data/Labels/Train/NomCongGiao/RCM_021_000_train.txt
-      - ./train_data/Labels/Train/NomCongGiao/CLCLab_Scene_Train.txt
+      - ./train_data/Labels/Train/CLCLab_Scene_Train.txt
     ext_op_transform_idx: 1
     transforms:
       - DecodeImage:
