@@ -74,6 +74,7 @@ class CTCHead(nn.Layer):
         self.mid_channels = mid_channels
         self.return_all_feats = return_all_feats
         self.export_center = kwargs.get("export_center", False)
+        self.scale = kwargs.get("scale", 1.0)
 
     def forward(self, x, targets=None):
         if self.mid_channels is None:
@@ -87,6 +88,7 @@ class CTCHead(nn.Layer):
         else:
             result = predicts
         if not self.training and not self.export_center:
+            predicts /= self.scale
             predicts = F.softmax(predicts, axis=2)
             result = predicts
 
