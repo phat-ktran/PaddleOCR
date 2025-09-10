@@ -169,6 +169,9 @@ def main():
 
     if config["Architecture"]["Backbone"].get("enable_dropout", False):
         model.backbone.enable_dropout()
+        
+    if config["Architecture"]["Neck"].get("enable_dropout", False):
+        model.neck.enable_dropout()
 
     # start eval
     metric = program.eval(

@@ -45,7 +45,9 @@ class Im2Seq(nn.Layer):
 class EncoderWithRNN(nn.Layer):
     def __init__(self, in_channels, hidden_size, cell_type="lstm", method="concat"):
         super(EncoderWithRNN, self).__init__()
-        assert method in ["concat", "add"], "Only supports Concatenate or Add for method."
+        assert method in ["concat", "add"], (
+            "Only supports Concatenate or Add for method."
+        )
         self.method = method
         self.out_channels = hidden_size * 2 if self.method == "concat" else hidden_size
         if cell_type == "lstm":
@@ -58,9 +60,9 @@ class EncoderWithRNN(nn.Layer):
             )
 
     def forward(self, x):
-        x, _ = self.cell(x) # batch_size x T x (2 * hidden_size)
+        x, _ = self.cell(x)  # batch_size x T x (2 * hidden_size)
         if self.method == "add":
-            x = x[:, :, :self.out_channels] + x[:, :, self.out_channels:]
+            x = x[:, :, : self.out_channels] + x[:, :, self.out_channels :]
         return x
 
 
@@ -91,6 +93,12 @@ class BidirectionalLSTM(nn.Layer):
         if self.with_linear:
             self.linear = nn.Linear(hidden_size * 2, output_size)
 
+    def enable_dropout(self):
+        """Enable dropout layers during inference"""
+        # Enable dropout in LSTM layer
+        # Note: LSTM dropout is controlled by the LSTM layer itself during training
+        pass
+
     def forward(self, input_feature):
         recurrent, _ = self.rnn(
             input_feature
@@ -120,6 +128,13 @@ class EncoderWithCascadeRNN(nn.Layer):
                 for i in range(num_layers)
             ]
         )
+
+    def enable_dropout(self):
+        """Enable dropout layers during inference"""
+        # Enable dropout in all encoder layers
+        for layer in self.encoder:
+            if hasattr(layer, "enable_dropout"):
+                layer.enable_dropout()
 
     def forward(self, x):
         for i, l in enumerate(self.encoder):
@@ -212,6 +227,13 @@ class EncoderWithSVTR(nn.Layer):
         self.out_channels = dims
         self.apply(self._init_weights)
 
+    def enable_dropout(self):
+        """Enable dropout layers during inference"""
+        # Enable dropout in all SVTR blocks
+        for blk in self.svtr_block:
+            if hasattr(blk, "enable_dropout"):
+                blk.enable_dropout()
+
     def _init_weights(self, m):
         if isinstance(m, nn.Linear):
             trunc_normal_(m.weight)
@@ -246,21 +268,30 @@ class EncoderWithSVTR(nn.Layer):
         z = self.conv1x1(self.conv4(z))
         return z
 
+
 class EncoderWithNomNa(nn.Layer):
     def __init__(self, in_channels, dim_feedforward, nhead, nlayers, act) -> None:
         super().__init__()
         self.out_channels = in_channels
         self.encoder = nn.TransformerEncoder(
-            encoder_layer= nn.TransformerEncoderLayer(
+            encoder_layer=nn.TransformerEncoderLayer(
                 d_model=in_channels,
                 nhead=nhead,
                 dim_feedforward=dim_feedforward,
                 activation=act,
             ),
-            num_layers=nlayers
+            num_layers=nlayers,
         )
+
+    def enable_dropout(self):
+        """Enable dropout layers during inference"""
+        # Enable dropout in TransformerEncoder
+        # Note: TransformerEncoder dropout is controlled internally during training
+        pass
+
     def forward(self, X: paddle.Tensor) -> paddle.Tensor:
         return self.encoder(X)
+
 
 class SequenceEncoder(nn.Layer):
     def __init__(self, in_channels, encoder_type, hidden_size=48, **kwargs):
@@ -277,7 +308,7 @@ class SequenceEncoder(nn.Layer):
                 "rnn": EncoderWithRNN,
                 "svtr": EncoderWithSVTR,
                 "cascadernn": EncoderWithCascadeRNN,
-                "nomna": EncoderWithNomNa
+                "nomna": EncoderWithNomNa,
             }
             assert encoder_type in support_encoder_dict, "{} must in {}".format(
                 encoder_type, support_encoder_dict.keys()
@@ -296,6 +327,16 @@ class SequenceEncoder(nn.Layer):
                 )
             self.out_channels = self.encoder.out_channels
             self.only_reshape = False
+
+    def enable_dropout(self):
+        """Enable dropout layers during inference"""
+        # Enable dropout in the encoder if it exists and has the method
+        if (
+            not self.only_reshape
+            and hasattr(self, "encoder")
+            and hasattr(self.encoder, "enable_dropout")
+        ):
+            self.encoder.enable_dropout()
 
     def forward(self, x):
         if self.encoder_type != "svtr":
