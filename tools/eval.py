@@ -170,8 +170,8 @@ def main():
     if config["Architecture"]["Backbone"].get("enable_dropout", False):
         model.backbone.enable_dropout()
         
-    if config["Architecture"]["Neck"].get("enable_dropout", False):
-        model.neck.enable_dropout()
+    if config["Architecture"]["Head"].get("enable_dropout", False) and config["Architecture"]["Head"]["name"] == "MultiHead":
+        model.head.ctc_encoder.enable_dropout()
 
     # start eval
     metric = program.eval(
