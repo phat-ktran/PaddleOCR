@@ -166,11 +166,12 @@ Eval:
         image_shape: [3, 48, 960]
     - KeepKeys:
         keep_keys:
-        - image
-        - label_ctc
-        - label_gtc
-        - length
-        - valid_ratio
+          - image
+          - label_ctc
+          - label_gtc
+          - length
+          - valid_ratio
+          - img_path
   loader:
     shuffle: false
     drop_last: false
