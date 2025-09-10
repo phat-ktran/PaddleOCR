@@ -844,7 +844,7 @@ def eval(
                     info = [str(post_result_item) for post_result_item in post_result]
                 else:
                     if len(post_result[0]) >= 2:
-                        info = [post_result_item[0] + "\t" + str(post_result_item[1]) for post_result_item in post_result]
+                        info = [post_result_item[0] + "\t" + str(post_result_item[1]) for post_result_item in post_result[0]]
                         if filename_idx and len(batch) > filename_idx and len(batch[filename_idx]) == len(images):
                             filenames = batch[filename_idx]
                             info = [filename + "\t" + info_item for filename, info_item in zip(filenames, info)]

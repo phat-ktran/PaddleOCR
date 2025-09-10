@@ -40,7 +40,7 @@ def main():
         "save_res_path", None
     )
     filename_idx = config["Global"].get(
-        "filename_idx", None
+        "filename_idx", 3
     )
     # build dataloader
     set_signal_handlers()
@@ -166,6 +166,9 @@ def main():
         logger.info("metric in ckpt ***************")
         for k, v in best_model_dict.items():
             logger.info("{}:{}".format(k, v))
+
+    if config["Architecture"]["Backbone"].get("enable_dropout", False):
+        model.backbone.enable_dropout()
 
     # start eval
     metric = program.eval(

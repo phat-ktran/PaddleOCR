@@ -184,6 +184,7 @@ Eval:
             - image
             - label
             - length
+            - filename
   loader:
     shuffle: false
     drop_last: false

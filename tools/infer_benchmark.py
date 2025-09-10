@@ -53,10 +53,10 @@ def load_predictions(pred_file):
                     if not line:
                         continue
                     parts = line.split("\t")
-                    if len(parts) >= 3:
+                    if len(parts) >= 2:
                         image_path = parts[0]
                         text = parts[1]
-                        confidence = float(parts[2])
+                        confidence = float(parts[2]) if len(parts) >= 3 else 0.0
                         # Extract just the filename for matching
                         filename = os.path.basename(image_path)
                         pred_data[filename] = (text, confidence)
