@@ -735,10 +735,19 @@ def eval(
     amp_custom_white_list=[],
     amp_dtype="float16",
     save_res_path=None,
-    filename_idx=None
+    filename_idx=None,
+    enable_dropout_backbone=False,
+    enable_dropout_neck=False,
 ):
     fout = open(save_res_path, "w") if save_res_path else None
     model.eval()
+    
+    if enable_dropout_backbone:
+        model.backbone.enable_dropout()
+        
+    if enable_dropout_neck:
+        model.head.ctc_encoder.enable_dropout()
+
     with paddle.no_grad():
         total_frame = 0.0
         total_time = 0.0

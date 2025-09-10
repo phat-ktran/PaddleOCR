@@ -166,13 +166,7 @@ def main():
         logger.info("metric in ckpt ***************")
         for k, v in best_model_dict.items():
             logger.info("{}:{}".format(k, v))
-
-    if config["Architecture"]["Backbone"].get("enable_dropout", False):
-        model.backbone.enable_dropout()
-        
-    if config["Architecture"]["Head"].get("enable_dropout", False) and config["Architecture"]["Head"]["name"] == "MultiHead":
-        model.head.ctc_encoder.enable_dropout()
-
+            
     # start eval
     metric = program.eval(
         model,
@@ -185,7 +179,9 @@ def main():
         amp_level,
         amp_custom_black_list,
         save_res_path=save_res_path,
-        filename_idx=filename_idx
+        filename_idx=filename_idx,
+        enable_dropout_backbone=config["Architecture"]["Backbone"].get("enable_dropout", False),
+        enable_dropout_neck=config["Architecture"]["Head"].get("enable_dropout", False) and config["Architecture"]["Head"]["name"] == "MultiHead"
     )
     logger.info("metric eval ***************")
     for k, v in metric.items():
