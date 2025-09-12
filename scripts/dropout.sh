@@ -11,12 +11,13 @@ N=12
 
 parallel -j $JOBS --lb "
 python tools/eval.py \
-  -c configs/rec/PP-Thesis/Nom/main/b2/pdnom/rec_svtrnet_base_nom_exp_b2.1.1.yml \
-  -o Global.checkpoints=./output/rec_svtrnet_base_nom_exp_b2.1.1/best_accuracy \
+  -c output/rec_svtrnet_base_ch_exp_a5.1.0/config.yml \
+  -o Global.checkpoints=./output/rec_svtrnet_base_ch_exp_a5.1.0/best_accuracy \
+     Eval.dataset.name=SimpleDataSet \
      Eval.dataset.data_dir=./train_data/ \
-     Eval.dataset.label_file_list=\"['./train_data/Labels/Validate/nomna_validate_old.txt']\" \
-     Eval.loader.batch_size_per_card=12 \
-     Global.save_res_path=./local/dropout/drop_{#}.txt \
+     Eval.dataset.label_file_list=\"['./train_data/Labels/Validate/nomna_validate_poem.txt']\" \
+     Eval.loader.batch_size_per_card=32 \
+     Global.save_res_path=./local/benchmark/drop_{#}.txt \
      Global.filename_idx=3 \
      Architecture.Backbone.enable_dropout=True
 " ::: $(seq 1 $N)
