@@ -17,7 +17,7 @@ import paddle
 
 
 class MTB(nn.Layer):
-    def __init__(self, cnn_num, in_channels):
+    def __init__(self, cnn_num, in_channels, scale=32):
         super(MTB, self).__init__()
         self.block = nn.Sequential()
         self.out_channels = in_channels
@@ -27,15 +27,15 @@ class MTB(nn.Layer):
                 self.block.add_sublayer(
                     "conv_{}".format(i),
                     nn.Conv2D(
-                        in_channels=in_channels if i == 0 else 32 * (2 ** (i - 1)),
-                        out_channels=32 * (2**i),
+                        in_channels=in_channels if i == 0 else scale * (2 ** (i - 1)),
+                        out_channels=scale * (2**i),
                         kernel_size=3,
                         stride=2,
                         padding=1,
                     ),
                 )
                 self.block.add_sublayer("relu_{}".format(i), nn.ReLU())
-                self.block.add_sublayer("bn_{}".format(i), nn.BatchNorm2D(32 * (2**i)))
+                self.block.add_sublayer("bn_{}".format(i), nn.BatchNorm2D(scale * (2**i)))
 
     def forward(self, images):
         x = self.block(images)
