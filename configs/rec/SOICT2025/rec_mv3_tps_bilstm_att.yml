@@ -4,9 +4,9 @@ Global:
   log_smooth_window: 20
   print_batch_step: 10
   save_model_dir: ./output/rec_mv3_tps_bilstm_att/
-  save_epoch_step: 1
+  save_epoch_step: 5
   # evaluation is run every 2000 iterations
-  eval_batch_step: [0, 2000]
+  eval_batch_step: [15290, 7645]
   cal_metric_during_train: True
   pretrained_model:
   checkpoints:
@@ -19,13 +19,18 @@ Global:
   infer_mode: False
   use_space_char: False
   save_res_path:
+    
+wandb:
+  project: "SOICT2025"
+  entity: "trankim147-vnu-hcmus"
+  name: "MV3-TPS-BiLSTM-Att"
 
 Optimizer:
   name: Adam
   beta1: 0.9
   beta2: 0.999
   lr:
-    learning_rate: 0.0001
+    learning_rate: 0.00015
   regularizer:
     name: 'L2'
     factor: 0.00001
@@ -106,7 +111,7 @@ Train:
           keep_keys: ['image', 'label', 'length'] # dataloader will return list in this order
   loader:
     shuffle: True
-    batch_size_per_card: 32
+    batch_size_per_card: 48
     drop_last: True
     num_workers: 8
 
@@ -128,5 +133,5 @@ Eval:
   loader:
     shuffle: False
     drop_last: False
-    batch_size_per_card: 256
+    batch_size_per_card: 512
     num_workers: 4

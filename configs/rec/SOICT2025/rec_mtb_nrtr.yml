@@ -19,6 +19,11 @@ Global:
   infer_mode: False
   use_space_char: False
   save_res_path:
+    
+wandb:
+  project: "SOICT2025"
+  entity: "trankim147-vnu-hcmus"
+  name: "MTB-NRTR"
 
 Optimizer:
   name: Adam
