@@ -28,7 +28,8 @@ class AttentionHead(nn.Layer):
         self.input_size = in_channels
         self.hidden_size = hidden_size
         self.num_classes = out_channels
-
+        self.max_length = kwargs.get("max_length", 25)
+        
         self.attention_cell = AttentionGRUCell(
             in_channels, hidden_size, out_channels, use_gru=False
         )
@@ -38,9 +39,9 @@ class AttentionHead(nn.Layer):
         input_ont_hot = F.one_hot(input_char, onehot_dim)
         return input_ont_hot
 
-    def forward(self, inputs, targets=None, batch_max_length=25):
+    def forward(self, inputs, targets=None, batch_max_length=None):
         batch_size = inputs.shape[0]
-        num_steps = batch_max_length
+        num_steps = batch_max_length or self.max_length
 
         hidden = paddle.zeros((batch_size, self.hidden_size))
         output_hiddens = []
