@@ -40,15 +40,15 @@ Architecture:
     model_name: small
   Backbone:
     name: MobileNetV3
-    scale: 1.0
+    scale: 0.75
     model_name: large
   Neck:
     name: SequenceEncoder
     encoder_type: rnn 
-    hidden_size: 256
+    hidden_size: 128
   Head:
     name: AttentionHead
-    hidden_size: 384   
+    hidden_size: 256   
     max_length: 40
     
 
