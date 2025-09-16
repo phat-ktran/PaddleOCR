@@ -1,0 +1,146 @@
+Global:
+  use_gpu: True
+  epoch_num: 50
+  log_smooth_window: 20
+  print_batch_step: 10
+  save_model_dir: ./output/parseq
+  save_epoch_step: 3
+  # evaluation is run every 5000 iterations after the 4000th iteration
+  eval_batch_step: [0, 500]
+  cal_metric_during_train: True
+  pretrained_model:
+  checkpoints:
+  save_inference_dir:
+  use_visualdl: False
+  infer_img:
+  # for data or label process
+  character_dict_path: ppocr/utils/dict/PP-Thesis/nom_clclab_v2.txt
+  character_type: ch
+  max_text_length: 40
+  num_heads: 8
+  infer_mode: False
+  use_space_char: False
+  save_res_path:
+
+Optimizer:
+  name: Adam
+  beta1: 0.9
+  beta2: 0.999
+  lr:
+    name: OneCycle
+    max_lr: 0.0005
+
+Architecture:
+  model_type: rec
+  algorithm: ParseQ
+  in_channels: 3
+  Transform:
+  Backbone:
+    name: ViTParseQ
+    img_size: [48, 960]
+    patch_size: [4, 8]
+    embed_dim: 384
+    depth: 12
+    num_heads: 6
+    mlp_ratio: 4
+    in_channels: 3
+  Head:
+    name: ParseQHead
+    # Architecture
+    max_text_length: 40
+    embed_dim: 384
+    dec_num_heads: 12
+    dec_mlp_ratio: 4
+    dec_depth: 1
+    # Training
+    perm_num: 6
+    perm_forward: true
+    perm_mirrored: true
+    dropout: 0.1
+    # Decoding mode (test)
+    decode_ar: true
+    refine_iters: 1
+
+Loss:
+  name: ParseQLoss
+
+PostProcess:
+  name: ParseQLabelDecode
+
+Metric:
+  name: RecMetric
+  main_indicator: acc
+  is_filter: False
+
+Train:
+  dataset:
+    name: SimpleDataSet
+    data_dir: ./train_data/
+    label_file_list:
+      - ./train_data/Labels/Train/nomna_train.txt
+      - ./train_data/Labels/Train/CPNK-vertical_all.txt
+      - ./train_data/Labels/Train/HVK_001_vertical_v1_y850_all.txt
+      - ./train_data/Labels/Train/RBI_003_02_all.txt
+      - ./train_data/Labels/Train/RBI_003_03_all.txt
+      - ./train_data/Labels/Train/sac-phong_all.txt
+      - ./train_data/Labels/Train/Tale-of-Kieu-1870_all.txt
+      - ./train_data/Labels/Train/Tale-of-Kieu-1902_all.txt
+      - ./train_data/Labels/Train/ThachSanh-Doc_all.txt
+      - ./train_data/Labels/Train/NomCongGiao/RB_HuongSonQuanTheAm_train.txt
+      - ./train_data/Labels/Train/NomCongGiao/RCM_001_000_train.txt
+      - ./train_data/Labels/Train/NomCongGiao/RCM_003_000_train.txt
+      - ./train_data/Labels/Train/NomCongGiao/RCM_004_000_train.txt
+      - ./train_data/Labels/Train/NomCongGiao/RCM_005_000_train.txt
+      - ./train_data/Labels/Train/NomCongGiao/RCM_006_000_train.txt
+      - ./train_data/Labels/Train/NomCongGiao/RCM_007_000_train.txt
+      - ./train_data/Labels/Train/NomCongGiao/RCM_009_000_train.txt
+      - ./train_data/Labels/Train/NomCongGiao/RCM_00X_000_train.txt
+      - ./train_data/Labels/Train/NomCongGiao/RCM_010_000_train.txt
+      - ./train_data/Labels/Train/NomCongGiao/RCM_011_000_train.txt
+      - ./train_data/Labels/Train/NomCongGiao/RCM_012_000_train.txt
+      - ./train_data/Labels/Train/NomCongGiao/RCM_013_000_train.txt
+      - ./train_data/Labels/Train/NomCongGiao/RCM_014_000_train.txt
+      - ./train_data/Labels/Train/NomCongGiao/RCM_016_000_train.txt
+      - ./train_data/Labels/Train/NomCongGiao/RCM_019_002_train.txt
+      - ./train_data/Labels/Train/NomCongGiao/RCM_019_003_train.txt
+      - ./train_data/Labels/Train/NomCongGiao/RCM_020_000_train.txt
+      - ./train_data/Labels/Train/NomCongGiao/RCM_021_000_train.txt
+    transforms:
+      - DecodeImage: # load image
+          img_mode: BGR
+          channel_first: False
+      - ParseQRecAug:
+          aug_type: 0 # or 1
+      - ParseQLabelEncode:
+      - SVTRRecResizeImg:
+          image_shape: [3, 48, 960]
+          padding: False
+      - KeepKeys:
+          keep_keys: ["image", "label", "length"] # dataloader will return list in this order
+  loader:
+    shuffle: True
+    batch_size_per_card: 32
+    drop_last: True
+    num_workers: 4
+
+Eval:
+  dataset:
+    name: SimpleDataSet
+    data_dir: ./train_data/
+    label_file_list:
+      - ./train_data/Labels/Validate/nomna_validate.txt
+    transforms:
+      - DecodeImage: # load image
+          img_mode: BGR
+          channel_first: False
+      - ParseQLabelEncode: # Class handling label
+      - SVTRRecResizeImg:
+          image_shape: [3, 48, 960]
+          padding: False
+      - KeepKeys:
+          keep_keys: ["image", "label", "length"]
+  loader:
+    shuffle: False
+    drop_last: False
+    batch_size_per_card: 384
+    num_workers: 4
