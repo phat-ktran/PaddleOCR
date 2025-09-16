@@ -37,7 +37,7 @@ Architecture:
   Transform:
   Backbone:
     name: ViTParseQ
-    img_size: [48, 960]
+    img_size: [32, 640]
     patch_size: [4, 8]
     embed_dim: 384
     depth: 12
@@ -113,7 +113,7 @@ Train:
           aug_type: 0 # or 1
       - ParseQLabelEncode:
       - SVTRRecResizeImg:
-          image_shape: [3, 48, 960]
+          image_shape: [3, 32, 640]
           padding: False
       - KeepKeys:
           keep_keys: ["image", "label", "length"] # dataloader will return list in this order
@@ -135,7 +135,7 @@ Eval:
           channel_first: False
       - ParseQLabelEncode: # Class handling label
       - SVTRRecResizeImg:
-          image_shape: [3, 48, 960]
+          image_shape: [3, 32, 640]
           padding: False
       - KeepKeys:
           keep_keys: ["image", "label", "length"]
