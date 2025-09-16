@@ -1,12 +1,12 @@
 Global:
   use_gpu: True
-  epoch_num: 50
+  epoch_num: 100
   log_smooth_window: 20
   print_batch_step: 10
   save_model_dir: ./output/parseq
-  save_epoch_step: 3
+  save_epoch_step: 5
   # evaluation is run every 5000 iterations after the 4000th iteration
-  eval_batch_step: [0, 500]
+  eval_batch_step: [15290, 7645]
   cal_metric_during_train: True
   pretrained_model:
   checkpoints:
@@ -22,13 +22,18 @@ Global:
   use_space_char: False
   save_res_path:
 
+wandb:
+  project: "SOICT2025"
+  entity: "trankim147-vnu-hcmus"
+  name: "ViT-ParSeq"
+
 Optimizer:
   name: Adam
   beta1: 0.9
   beta2: 0.999
   lr:
     name: OneCycle
-    max_lr: 0.0005
+    max_lr: 0.00015
 
 Architecture:
   model_type: rec
@@ -119,9 +124,9 @@ Train:
           keep_keys: ["image", "label", "length"] # dataloader will return list in this order
   loader:
     shuffle: True
-    batch_size_per_card: 32
+    batch_size_per_card: 48
     drop_last: True
-    num_workers: 4
+    num_workers: 8
 
 Eval:
   dataset:
@@ -142,5 +147,5 @@ Eval:
   loader:
     shuffle: False
     drop_last: False
-    batch_size_per_card: 384
+    batch_size_per_card: 256
     num_workers: 4
