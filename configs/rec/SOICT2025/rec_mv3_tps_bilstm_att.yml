@@ -40,7 +40,7 @@ Architecture:
     model_name: small
   Backbone:
     name: MobileNetV3
-    scale: 0.75
+    scale: 0.5
     model_name: large
   Neck:
     name: SequenceEncoder
