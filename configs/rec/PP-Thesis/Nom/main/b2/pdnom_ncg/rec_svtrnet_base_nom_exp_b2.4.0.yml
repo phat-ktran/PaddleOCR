@@ -20,8 +20,6 @@ Global:
   infer_mode: false
   use_space_char: false
   max_text_length: 40
-  override_head: true
-  top_k: 19001
   use_wandb: true
   use_amp: true
   d2s_train_image_shape: [3, 48, 960]
@@ -211,6 +209,7 @@ Eval:
             - image
             - label
             - length
+            - filename
   loader:
     shuffle: false
     drop_last: false

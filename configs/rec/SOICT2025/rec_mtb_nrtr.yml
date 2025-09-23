@@ -133,7 +133,7 @@ Eval:
           image_shape: [3, 48, 960] # W H
           resize_type: PIL # PIL or OpenCV
       - KeepKeys:
-          keep_keys: ["image", "label", "length"] # dataloader will return list in this order
+          keep_keys: ["image", "label", "length", "filename"] # dataloader will return list in this order
   loader:
     shuffle: False
     drop_last: False

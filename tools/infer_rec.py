@@ -15,6 +15,7 @@
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
+import gc
 
 import numpy as np
 
@@ -134,8 +135,6 @@ def main():
         os.makedirs(os.path.dirname(save_res_path))
 
     model.eval()
-    if config["Architecture"]["Backbone"].get("enable_dropout", False):
-        model.backbone.enable_dropout()
     infer_imgs = config["Global"]["infer_img"]
     infer_list = config["Global"].get("infer_list", None)
     with open(save_res_path, "w") as fout:
@@ -250,6 +249,10 @@ def main():
             if info is not None:
                 logger.info("\t result: {}".format(info))
                 fout.write(file + "\t" + info + "\n")
+                
+            del images, batch
+            paddle.device.cuda.empty_cache()
+            gc.collect()
     logger.info("success!")
 
 

@@ -223,9 +223,10 @@ class GridGenerator(nn.Layer):
 
     def build_P_paddle(self, I_r_size):
         I_r_height, I_r_width = I_r_size
-        I_r_grid_x = (
-            paddle.arange(-I_r_width, I_r_width, 2, dtype="float64") + 1.0
-        ) / paddle.to_tensor(np.array([I_r_width])).astype("float64")
+        # I_r_grid_x = (
+        #     paddle.arange(-I_r_width, I_r_width, 2, dtype="float64") + 1.0
+        # ) / paddle.to_tensor(np.array([I_r_width])).astype("float64")
+        I_r_grid_x = (paddle.arange(-I_r_width, I_r_width, 2, dtype="float64") + 1.0) / I_r_width
 
         I_r_grid_y = (
             paddle.arange(-I_r_height, I_r_height, 2, dtype="float64") + 1.0
