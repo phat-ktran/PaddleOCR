@@ -76,7 +76,7 @@ Train:
     name: SimpleDataSet
     data_dir: ./train_data/
     label_file_list:
-      - ./train_data/HisDoc1B/train.txt
+      - ./train_data/HisDoc1B/train_test.txt
       - ./train_data/M5HisDoc_Det/train.txt
       - ./train_data/CLCLab_Det/train.txt
       - ./train_data/TruyenKieu/Label.txt
@@ -149,7 +149,7 @@ Eval:
     name: SimpleDataSet
     data_dir: ./train_data/
     label_file_list:
-      - ./train_data/HisDoc1B/val.txt
+      - ./train_data/HisDoc1B/val_test.txt
     transforms:
       - DecodeImage:
           img_mode: BGR
