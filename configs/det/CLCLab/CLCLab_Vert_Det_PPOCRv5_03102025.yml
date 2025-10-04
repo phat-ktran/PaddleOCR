@@ -9,7 +9,7 @@ Global:
   save_epoch_step: 10
   eval_batch_step:
     - 0
-    - 3243
+    - 1993
   cal_metric_during_train: false
   checkpoints:
   pretrained_model: https://paddle-model-ecology.bj.bcebos.com/paddlex/official_pretrained_model/PPHGNetV2_B4_ocr_det.pdparams
