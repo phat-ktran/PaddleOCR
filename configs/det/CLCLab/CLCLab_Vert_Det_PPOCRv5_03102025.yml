@@ -54,7 +54,7 @@ Optimizer:
   beta2: 0.999
   lr:
     name: Cosine
-    learning_rate: 0.001 #(4*16c)
+    learning_rate: 0.0005 #(4*8c)
     warmup_epoch: 2
   regularizer:
     name: L2
@@ -141,7 +141,7 @@ Train:
   loader:
     shuffle: true
     drop_last: false
-    batch_size_per_card: 16
+    batch_size_per_card: 8
     num_workers: 8
 
 Eval:
