@@ -76,10 +76,10 @@ Train:
     name: SimpleDataSet
     data_dir: ./train_data/
     label_file_list:
-      - ./train_data/HisDoc1B/train_test.txt
+      - ./train_data/HisDoc1B/train.txt
       - ./train_data/M5HisDoc_Det/train.txt
       - ./train_data/CLCLab_Det/train.txt
-      - ./train_data/TruyenKieu/Label.txt
+      - ./train_data/TruyenKieu/train.txt
       - ./train_data/VanBiaHaiPhong/train.txt
       - ./train_data/VanBiaNhaMac/train.txt
     ratio_list: [1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
@@ -149,7 +149,7 @@ Eval:
     name: SimpleDataSet
     data_dir: ./train_data/
     label_file_list:
-      - ./train_data/HisDoc1B/val_test.txt
+      - ./train_data/HisDoc1B/val.txt
     transforms:
       - DecodeImage:
           img_mode: BGR
