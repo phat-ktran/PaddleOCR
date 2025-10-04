@@ -82,7 +82,7 @@ Train:
       - ./train_data/TruyenKieu/train.txt
       - ./train_data/VanBiaHaiPhong/train.txt
       - ./train_data/VanBiaNhaMac/train.txt
-    ratio_list: [1.0]
+    ratio_list: [1.0, 1.0, 1.5, 1.0, 3.0, 3.0]
     transforms:
       - DecodeImage:
           img_mode: BGR
