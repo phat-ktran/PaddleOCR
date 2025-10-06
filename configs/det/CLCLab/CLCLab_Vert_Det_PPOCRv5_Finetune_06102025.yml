@@ -12,7 +12,7 @@ Global:
     - 372
   cal_metric_during_train: false
   checkpoints:
-  pretrained_model: ./output/CLCLab_Vert_Det_PPOCRv5_Finetune_06102025/best_accuracy
+  pretrained_model: ./output/CLCLab_Vert_Det_PPOCRv5_03102025/best_accuracy
   save_inference_dir: null
   use_visualdl: false
   infer_img: null
