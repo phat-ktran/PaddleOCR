@@ -6,7 +6,7 @@ Global:
   log_smooth_window: 20
   print_batch_step: 10
   save_model_dir: ./output/CLCLab_Vert_Det_PPOCRv5_19102025
-  save_epoch_step: 10
+  save_epoch_step: 5
   eval_batch_step:
     - 0
     - 168
