@@ -37,7 +37,7 @@ Architecture:
     intracl: true
   Head:
     name: PFHeadLocal
-    k: 100
+    k: 80
     mode: "large"
 
 Loss:
@@ -105,12 +105,12 @@ Train:
           max_tries: 50
           keep_ratio: true
       - MakeBorderMap:
-          shrink_ratio: 0.2
+          shrink_ratio: 0.3
           thresh_min: 0.3
           thresh_max: 0.7
           total_epoch: *epoch_num
       - MakeShrinkMap:
-          shrink_ratio: 0.2
+          shrink_ratio: 0.3
           min_text_size: 8
           total_epoch: *epoch_num
       - NormalizeImage:
