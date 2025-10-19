@@ -73,7 +73,7 @@ Metric:
 Train:
   dataset:
     name: SimpleDataSet
-    data_dir: ./train_data/
+    data_dir: ./train_data/VanBia
     label_file_list:
       - ./train_data/VanBia/train.txt
     ratio_list: [1.0]
@@ -141,7 +141,7 @@ Train:
 Eval:
   dataset:
     name: SimpleDataSet
-    data_dir: ./train_data/
+    data_dir: ./train_data/VanBia
     label_file_list:
       - ./train_data/VanBia/val.txt
     transforms:
