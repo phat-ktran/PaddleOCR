@@ -109,6 +109,10 @@ class Mlp(nn.Layer):
         self.fc2 = nn.Linear(hidden_features, out_features)
         self.drop = nn.Dropout(drop)
 
+    def enable_dropout(self):
+        """Enable dropout layers during inference"""
+        self.drop.train()
+
     def forward(self, x):
         x = self.fc1(x)
         x = self.act(x)
@@ -211,6 +215,11 @@ class Attention(nn.Layer):
         x = self.proj_drop(x)
         return x
 
+    def enable_dropout(self):
+        """Enable dropout layers during inference"""
+        self.attn_drop.train()
+        self.proj_drop.train()
+
 
 class Block(nn.Layer):
     def __init__(
@@ -267,6 +276,13 @@ class Block(nn.Layer):
             drop=drop,
         )
         self.prenorm = prenorm
+
+    def enable_dropout(self):
+        """Enable dropout layers during inference"""
+        if hasattr(self.mixer, "enable_dropout"):
+            self.mixer.enable_dropout()
+        if hasattr(self.mlp, "enable_dropout"):
+            self.mlp.enable_dropout()
 
     def forward(self, x):
         if self.prenorm:
@@ -358,9 +374,9 @@ class PatchEmbed(nn.Layer):
 
     def forward(self, x):
         B, C, H, W = x.shape
-        assert (
-            H == self.img_size[0] and W == self.img_size[1]
-        ), f"Input image size ({H}*{W}) doesn't match model ({self.img_size[0]}*{self.img_size[1]})."
+        assert H == self.img_size[0] and W == self.img_size[1], (
+            f"Input image size ({H}*{W}) doesn't match model ({self.img_size[0]}*{self.img_size[1]})."
+        )
         x = self.proj(x).flatten(2).transpose((0, 2, 1))
         return x
 
@@ -420,6 +436,7 @@ class SVTRNet(nn.Layer):
     def __init__(
         self,
         img_size=[32, 100],
+        patch_size=[4, 4],
         in_channels=3,
         embed_dim=[64, 128, 256],
         depth=[3, 6, 3],
@@ -462,6 +479,7 @@ class SVTRNet(nn.Layer):
             in_channels=in_channels,
             embed_dim=embed_dim[0],
             sub_num=sub_num,
+            patch_size=patch_size,
         )
         num_patches = self.patch_embed.num_patches
         self.HW = [img_size[0] // (2**sub_num), img_size[1] // (2**sub_num)]
@@ -585,6 +603,27 @@ class SVTRNet(nn.Layer):
 
         trunc_normal_(self.pos_embed)
         self.apply(self._init_weights)
+
+    def enable_dropout(self):
+        """Enable dropout layers during inference"""
+        self.pos_drop.train()
+
+        # Enable dropout in all blocks
+        for blk in self.blocks1:
+            if hasattr(blk, "enable_dropout"):
+                blk.enable_dropout()
+        for blk in self.blocks2:
+            if hasattr(blk, "enable_dropout"):
+                blk.enable_dropout()
+        for blk in self.blocks3:
+            if hasattr(blk, "enable_dropout"):
+                blk.enable_dropout()
+
+        # Enable dropout in final layers if they exist
+        if self.last_stage and hasattr(self, "dropout"):
+            self.dropout.train()
+        if self.use_lenhead and hasattr(self, "dropout_len"):
+            self.dropout_len.train()
 
     def _init_weights(self, m):
         if isinstance(m, nn.Linear):

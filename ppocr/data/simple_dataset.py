@@ -18,6 +18,7 @@ import os
 import json
 import random
 import traceback
+import itertools
 from paddle.io import Dataset
 from .imaug import transform, create_operators
 
@@ -39,9 +40,9 @@ class SimpleDataSet(Dataset):
         if isinstance(ratio_list, (float, int)):
             ratio_list = [float(ratio_list)] * int(data_source_num)
 
-        assert (
-            len(ratio_list) == data_source_num
-        ), "The length of ratio_list should be the same as the file_list."
+        assert len(ratio_list) == data_source_num, (
+            "The length of ratio_list should be the same as the file_list."
+        )
         self.data_dir = dataset_config["data_dir"]
         self.do_shuffle = loader_config["shuffle"]
         self.seed = seed
@@ -121,12 +122,28 @@ class SimpleDataSet(Dataset):
         data_line = self.data_lines[file_idx]
         try:
             data_line = data_line.decode("utf-8")
+            # Example: page065b_5.jpg	㐌󰟆身世群算鏡芇	1,6	㣉囍浺滝瑇縱衝鬃𣙩𦤒,㩡哸嫧對捼浽郛餒鳬𢭂
             substr = data_line.strip("\n").split(self.delimiter)
             file_name = substr[0]
             file_name = self._try_parse_filename_list(file_name)
             label = substr[1]
+            k_ctc_labels = []
+            if len(substr) > 3 and substr[2] and substr[3]:
+                partial_index = [int(i) for i in substr[2].split(",")]
+                candidate_label_groups = substr[3].split(",")
+                candidate_lists = [list(cands) for cands in candidate_label_groups]
+                for combo in itertools.product(*candidate_lists):
+                    label_chars = list(label)
+                    for idx_replace, char in zip(partial_index, combo):
+                        if idx_replace < len(label_chars):
+                            label_chars[idx_replace] = char
+                    k_ctc_labels.append("".join(label_chars))
+            else:
+                k_ctc_labels = [label]
+
             img_path = os.path.join(self.data_dir, file_name)
             data = {"img_path": img_path, "label": label}
+            data["k_ctc_labels"] = k_ctc_labels
             if not os.path.exists(img_path):
                 raise Exception("{} does not exist!".format(img_path))
             with open(data["img_path"], "rb") as f:
@@ -166,10 +183,10 @@ class MultiScaleDataSet(SimpleDataSet):
     def wh_aware(self):
         data_line_new = []
         wh_ratio = []
-        for line in self.data_lines:
-            data_line_new.append(line)
-            line = line.decode("utf-8")
-            name, label, w, h = line.strip("\n").split(self.delimiter)
+        for lins in self.data_lines:
+            data_line_new.append(lins)
+            lins = lins.decode("utf-8")
+            name, label, w, h = lins.strip("\n").split(self.delimiter)
             wh_ratio.append(float(w) / float(h))
 
         self.data_lines = data_line_new

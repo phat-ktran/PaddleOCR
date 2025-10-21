@@ -14,7 +14,7 @@ maintainers = [
     {name = "PaddlePaddle", email = "paddleocr@baidu.com"},
 ]
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.8.1"
 keywords = [
     "ocr",
     "textdetection",
@@ -73,3 +73,6 @@ markers = [
     "resource_intensive: mark a test as resource intensive"
 ]
 addopts = "-m 'not resource_intensive'"
+
+[tool.uv.sources]
+paddlex = { git = "https://github.com/phat-ktran/PaddleX.git", rev = "release/3.3" }
