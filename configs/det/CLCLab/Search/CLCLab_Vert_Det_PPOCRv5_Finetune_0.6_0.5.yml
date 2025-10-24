@@ -78,7 +78,7 @@ Train:
       - ./train_data/VanBia/train.txt
       - ./train_data/Subsample/train.txt
       - ./train_data/HisDoc1B_Subsample/train.txt
-    ratio_list: [1.0]
+    ratio_list: [1.0, 1.0, 1.0]
     transforms:
       - DecodeImage:
           img_mode: BGR
