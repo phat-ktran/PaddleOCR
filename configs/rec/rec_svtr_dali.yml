@@ -1,0 +1,134 @@
+# Example configuration for using NVIDIA DALI operators in PaddleOCR Recognition
+# This config demonstrates how to use DALI-accelerated data preprocessing for text recognition
+
+Global:
+  use_gpu: True
+  epoch_num: 500
+  log_smooth_window: 20
+  print_batch_step: 10
+  save_model_dir: ./output/rec_dali/
+  save_epoch_step: 3
+  eval_batch_step: [0, 2000]
+  cal_metric_during_train: True
+  pretrained_model:
+  checkpoints:
+  save_inference_dir:
+  use_visualdl: False
+  infer_img: doc/imgs_words_en/word_10.png
+  character_dict_path:
+  max_text_length: 25
+  infer_mode: False
+  use_space_char: False
+  save_res_path: ./output/rec/predicts_rec_dali.txt
+
+Optimizer:
+  name: Adam
+  beta1: 0.9
+  beta2: 0.999
+  lr:
+    name: Cosine
+    learning_rate: 0.001
+    warmup_epoch: 5
+  regularizer:
+    name: 'L2'
+    factor: 0.00001
+
+Architecture:
+  model_type: rec
+  algorithm: SVTR
+  Transform:
+  Backbone:
+    name: MobileNetV1Enhance
+    scale: 0.5
+    last_conv_stride: [1, 2]
+    last_pool_type: avg
+  Neck:
+    name: SequenceEncoder
+    encoder_type: svtr
+    dims: 64
+    depth: 2
+    hidden_dims: 120
+    use_guide: False
+  Head:
+    name: CTCHead
+    fc_decay: 0.00001
+
+Loss:
+  name: CTCLoss
+
+PostProcess:
+  name: CTCLabelDecode
+
+Metric:
+  name: RecMetric
+  main_indicator: acc
+
+Train:
+  dataset:
+    name: SimpleDataSet
+    data_dir: ./train_data/
+    label_file_list:
+      - ./train_data/train_list.txt
+    ratio_list: [1.0]
+    # Using DALI operators for GPU-accelerated data preprocessing
+    transforms:
+      - DALIDecodeImage:  # DALI-accelerated image decoding
+          img_mode: BGR
+          channel_first: False
+          device: cpu  # Use 'gpu' for GPU acceleration
+      - CTCLabelEncode:  # Class handling label
+      # DALI-accelerated augmentation operators
+      - DALIRandomFlip:
+          horizontal: true
+          vertical: false
+          probability: 0.3
+      - DALIBrightness:
+          brightness_range: [0.7, 1.3]
+          probability: 0.4
+      - DALIContrast:
+          contrast_range: [0.7, 1.3]
+          probability: 0.4
+      - RecResizeImg:
+          image_shape: [3, 32, 100]
+      - DALINormalizeImage:  # DALI-accelerated normalization
+          scale: 1./255.
+          mean: [0.5, 0.5, 0.5]
+          std: [0.5, 0.5, 0.5]
+          order: 'hwc'
+      - ToCHWImage:
+      - KeepKeys:
+          keep_keys: ['image', 'label', 'length']
+  loader:
+    shuffle: True
+    batch_size_per_card: 256
+    drop_last: True
+    num_workers: 8
+
+Eval:
+  dataset:
+    name: SimpleDataSet
+    data_dir: ./train_data/
+    label_file_list:
+      - ./train_data/val_list.txt
+    # Using DALI operators for validation as well
+    transforms:
+      - DALIDecodeImage:  # DALI-accelerated image decoding
+          img_mode: BGR
+          channel_first: False
+          device: cpu
+      - CTCLabelEncode:
+      - RecResizeImg:
+          image_shape: [3, 32, 100]
+      - DALINormalizeImage:  # DALI-accelerated normalization
+          scale: 1./255.
+          mean: [0.5, 0.5, 0.5]
+          std: [0.5, 0.5, 0.5]
+          order: 'hwc'
+      - ToCHWImage:
+      - KeepKeys:
+          keep_keys: ['image', 'label', 'length']
+  loader:
+    shuffle: False
+    drop_last: False
+    batch_size_per_card: 256
+    num_workers: 4

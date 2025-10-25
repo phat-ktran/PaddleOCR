@@ -64,6 +64,21 @@ from .drrg_targets import DRRGTargets
 from .latex_ocr_aug import *
 from .unimernet_aug import *
 
+# DALI operators (optional)
+try:
+    from .dali_ops import (
+        DALIDecodeImage,
+        DALINormalizeImage,
+        DALIResize,
+        DALIRandomRotation,
+        DALIRandomFlip,
+        DALIBrightness,
+        DALIContrast,
+    )
+except ImportError:
+    # DALI is optional, operators will raise ImportError when instantiated if not available
+    pass
+
 
 def transform(data, ops=None):
     """transform"""
